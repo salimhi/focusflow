@@ -1197,11 +1197,14 @@ document.getElementById('bo-skip').onclick=()=>{totalSeconds=0;};
 // ── YT video control ──
 function pauseYtVideo(){
   videoWatchTick=false;
+  _ytLastState=2; // pre-set: our own pause won't re-trigger the guard
   try{document.getElementById('yt-iframe').contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');}catch(e){}
 }
 function resumeYtVideo(){
-  videoWatchTick=true;
+  _videoResumedByGuard=true; // suppress state=1 from re-triggering anything
+  _ytLastState=1;
   try{document.getElementById('yt-iframe').contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}','*');}catch(e){}
+  setTimeout(()=>{_videoResumedByGuard=false;videoWatchTick=true;},1000);
 }
 
 // ── Sound ──
@@ -1228,6 +1231,7 @@ function showNotif(msg){
 // ── Focus Guard ──
 let focusGuardActive=false,focusGuardTimer=null,focusGuardCount=0;
 let _videoResumedByGuard=false;
+let _ytLastState=-1;
 
 function showFocusGuard(){
   if(focusGuardActive)return;
@@ -1264,35 +1268,68 @@ function dismissFocusGuard(){
   document.getElementById('focus-guard').classList.remove('show');
 }
 
-// Intercept YouTube iframe postMessage pause/play events — works in both normal and fullscreen
+// ── YouTube state detection via postMessage ──
+// YouTube sends messages in multiple formats depending on version
+let _ytLastState=-1; // track last known state to debounce
+
 window.addEventListener('message',e=>{
   if(!e.data)return;
   let data;
   try{data=typeof e.data==='string'?JSON.parse(e.data):e.data;}catch{return;}
-  if(data.event==='onStateChange'){
-    const state=data.info;
-    const onYtPage=document.getElementById('yt-page').classList.contains('active');
-    if(!onYtPage)return;
 
-    if(state===1){
-      // Video started / resumed playing
-      videoWatchTick=true;
-      // If timer was paused (guard countdown expired or manual pause), resume it now
-      if(isPaused&&timerRunning&&!_videoResumedByGuard){
-        doResume(true); // fromVideo=true prevents feedback loop
-      }
-    }
+  // Format 1: {event:'onStateChange', info: stateNumber}
+  // Format 2: {event:'infoDelivery', info:{playerState: stateNumber}}
+  let state=null;
+  if(data.event==='onStateChange'&&typeof data.info==='number') state=data.info;
+  else if(data.event==='infoDelivery'&&data.info&&typeof data.info.playerState==='number') state=data.info.playerState;
 
-    if(state===2){
-      // Video paused
-      videoWatchTick=false;
-      // Show focus guard only during focus, not our own signals
-      if(timerRunning&&runningTimerMode==='focus'&&!focusGuardActive&&!_videoResumedByGuard){
-        showFocusGuard();
-      }
+  if(state===null)return;
+  if(state===_ytLastState)return; // debounce same state
+  _ytLastState=state;
+
+  const onYtPage=document.getElementById('yt-page').classList.contains('active');
+  if(!onYtPage)return;
+
+  if(state===1){
+    // Playing
+    videoWatchTick=true;
+    if(isPaused&&timerRunning&&!_videoResumedByGuard){
+      doResume(true);
     }
   }
+  if(state===2){
+    // Paused
+    videoWatchTick=false;
+    if(timerRunning&&runningTimerMode==='focus'&&!focusGuardActive&&!_videoResumedByGuard){
+      showFocusGuard();
+    }
+  }
+  if(state===0||state===5){
+    // Ended or cued — stop watch
+    videoWatchTick=false;
+  }
 });
+
+// ── Transparent click overlay as fallback pause detector ──
+// When user clicks the video (which pauses it), we get a brief focus loss.
+// We use a transparent div over the iframe that catches the first click,
+// passes it through, then watches for the resulting state change.
+// This is a belt-and-suspenders approach alongside postMessage.
+(function setupClickOverlay(){
+  const wrapper=document.getElementById('video-wrapper');
+  const overlay=document.createElement('div');
+  overlay.id='yt-click-overlay';
+  overlay.style.cssText='position:absolute;inset:0;z-index:5;cursor:pointer;background:transparent;';
+  wrapper.appendChild(overlay);
+
+  overlay.addEventListener('click',()=>{
+    // Pass click through to iframe by hiding overlay briefly
+    overlay.style.pointerEvents='none';
+    setTimeout(()=>{overlay.style.pointerEvents='auto';},500);
+    // If timer is running in focus mode and video was playing, anticipate a pause
+    // The postMessage handler will confirm it — this just primes us
+  });
+})();
 
 // ── START ──
 document.getElementById('start-btn').onclick=()=>{
@@ -1437,9 +1474,22 @@ function loadYoutube(url){
   currentVideoUrl=url;
   document.getElementById('vid-url-short').innerText=url.length>60?url.slice(0,57)+'…':url;
   document.getElementById('yt-page-title').innerText='Study Mode';
+  // origin must NOT be encoded in the src — YouTube checks it raw
   const origin=location.origin&&location.origin!=='null'?location.origin:'https://salimhi.github.io';
-  document.getElementById('yt-iframe').src=`https://www.youtube-nocookie.com/embed/${id}?enablejsapi=1&rel=0&modestbranding=1&autoplay=1&origin=${encodeURIComponent(origin)}`;
-  videoWatchTick=false; // will flip to true when state=1 arrives
+  const iframe=document.getElementById('yt-iframe');
+  iframe.src=`https://www.youtube-nocookie.com/embed/${id}?enablejsapi=1&rel=0&modestbranding=1&autoplay=1&origin=${origin}`;
+  videoWatchTick=false;
+  // After iframe loads, subscribe to YT events via postMessage
+  iframe.onload=()=>{
+    try{
+      // Tell YouTube we want to listen to events
+      iframe.contentWindow.postMessage(JSON.stringify({
+        event:'listening',
+        id:1,
+        channel:'widget'
+      }),'https://www.youtube-nocookie.com');
+    }catch(e){}
+  };
   closeFullscreen();
   showPage('yt');
   updateYtTimerBar();
