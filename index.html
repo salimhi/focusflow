@@ -276,7 +276,7 @@ canvas#trend-chart{max-height:200px}
 .nb-note-text{font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap}
 .nb-del{background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;padding:0;transition:color .2s}
 .nb-del:hover{color:var(--red)}
-/* Focus guard */
+/* Focus guard — works both as position:fixed (normal) and position:absolute (inside fullscreen wrapper) */
 #focus-guard{position:fixed;inset:0;z-index:9500;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.85);backdrop-filter:blur(20px)}
 #focus-guard.show{display:flex;animation:fadeUp .3s ease}
 .fg-quote{font-family:'DM Sans',sans-serif;font-style:italic;font-size:17px;color:rgba(255,255,255,.5);text-align:center;max-width:500px;line-height:1.8;margin-bottom:28px;padding:0 24px}
@@ -1264,7 +1264,7 @@ function dismissFocusGuard(){
   document.getElementById('focus-guard').classList.remove('show');
 }
 
-// Intercept YouTube iframe postMessage pause events
+// Intercept YouTube iframe postMessage pause/play events — works in both normal and fullscreen
 window.addEventListener('message',e=>{
   if(!e.data)return;
   let data;
@@ -1272,17 +1272,24 @@ window.addEventListener('message',e=>{
   if(data.event==='onStateChange'){
     const state=data.info;
     const onYtPage=document.getElementById('yt-page').classList.contains('active');
-    // State 2 = paused by user on video controls
-    if(state===2&&onYtPage&&timerRunning&&runningTimerMode==='focus'&&!focusGuardActive&&!_videoResumedByGuard){
-      showFocusGuard();
-    }
-    // State 1 = playing — track video watch
-    if(state===1&&onYtPage){
+    if(!onYtPage)return;
+
+    if(state===1){
+      // Video started / resumed playing
       videoWatchTick=true;
+      // If timer was paused (guard countdown expired or manual pause), resume it now
+      if(isPaused&&timerRunning&&!_videoResumedByGuard){
+        doResume(true); // fromVideo=true prevents feedback loop
+      }
     }
-    // State 2 = paused — stop watch tracking
-    if(state===2&&onYtPage){
+
+    if(state===2){
+      // Video paused
       videoWatchTick=false;
+      // Show focus guard only during focus, not our own signals
+      if(timerRunning&&runningTimerMode==='focus'&&!focusGuardActive&&!_videoResumedByGuard){
+        showFocusGuard();
+      }
     }
   }
 });
@@ -1348,13 +1355,16 @@ function _actuallyPause(){
   },1000);
   saveData();setMS('paused');if(!pipVideo.paused)pipVideo.pause();
 }
-function doResume(){
+function doResume(fromVideo=false){
   if(!isPaused)return;
   isPaused=false;clearInterval(pauseInterval);pauseInterval=null;
   setPauseUI(false);updateDisplays();setMS('playing');
   if(pipVideo.paused)pipVideo.play();
-  const onYt=document.getElementById('yt-page').classList.contains('active');
-  if(onYt&&runningTimerMode==='focus')resumeYtVideo();
+  // Only send resumeVideo command if WE are resuming (not triggered by video itself)
+  if(!fromVideo){
+    const onYt=document.getElementById('yt-page').classList.contains('active');
+    if(onYt&&runningTimerMode==='focus')resumeYtVideo();
+  }
 }
 document.getElementById('fs-pause').onclick=doPause;
 document.getElementById('fs-resume').onclick=doResume;
@@ -1452,18 +1462,35 @@ document.getElementById('yt-fullscreen-btn').onclick=()=>{
   else wrap.requestFullscreen&&wrap.requestFullscreen();
 };
 
-// Video fullscreen — show timer + auto-hide
+// Video fullscreen — show timer + auto-hide + move focus guard inside fullscreen element
 let vidFsHideTimer=null;
+const focusGuardEl=document.getElementById('focus-guard');
+const videoWrapEl=document.getElementById('video-wrapper');
+
 document.addEventListener('fullscreenchange',()=>{
-  const fst=document.getElementById('video-fs-timer'),wrap=document.getElementById('video-wrapper');
-  if(document.fullscreenElement===wrap){
+  const fst=document.getElementById('video-fs-timer');
+  if(document.fullscreenElement===videoWrapEl){
+    // Move focus guard inside the fullscreen container so it renders on top
+    videoWrapEl.appendChild(focusGuardEl);
+    // Fix focus guard position inside fullscreen: use position absolute covering full wrapper
+    focusGuardEl.style.position='absolute';
+    focusGuardEl.style.zIndex='9999';
+
     if(timerRunning)fst.classList.add('show');
+    clearTimeout(vidFsHideTimer);
     vidFsHideTimer=setTimeout(()=>fst.classList.add('fade'),10000);
-    wrap.addEventListener('mousemove',onVidMouseMove);wrap.addEventListener('click',onVidMouseMove);
+    videoWrapEl.addEventListener('mousemove',onVidMouseMove);
+    videoWrapEl.addEventListener('click',onVidMouseMove);
   }else{
+    // Move focus guard back to body so it works outside fullscreen
+    document.body.appendChild(focusGuardEl);
+    focusGuardEl.style.position='fixed';
+    focusGuardEl.style.zIndex='9500';
+
     fst.classList.remove('show');fst.classList.remove('fade');
     clearTimeout(vidFsHideTimer);
-    wrap.removeEventListener('mousemove',onVidMouseMove);wrap.removeEventListener('click',onVidMouseMove);
+    videoWrapEl.removeEventListener('mousemove',onVidMouseMove);
+    videoWrapEl.removeEventListener('click',onVidMouseMove);
   }
 });
 function onVidMouseMove(){
