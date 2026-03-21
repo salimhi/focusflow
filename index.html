@@ -627,14 +627,39 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
 }
 #pdf-break-overlay.show{display:flex;animation:fadeUp .4s ease}
 
-@media(max-width:600px){
-  .pdf-topbar{padding:10px 12px;gap:8px}
-  .pdf-ctrl-btn{width:40px;height:40px}
-  .pdf-controls{gap:4px}
-  .pdf-canvas-wrap{padding:12px 8px}
-  #pdf-float-timer{top:58px;right:10px;padding:5px 12px}
-  .ft-time{font-size:16px}
+@media(max-width:768px){
+  /* PDF topbar — sticky, larger touch targets */
+  .pdf-topbar{padding:10px 12px;gap:6px;min-height:52px;flex-wrap:nowrap;overflow-x:auto}
+  .pdf-back-btn{padding:9px 14px;font-size:13px;min-height:44px;flex-shrink:0}
+  .pdf-title{font-size:13px;min-width:0;max-width:100px}
+  .pdf-controls{gap:4px;flex-shrink:0}
+  .pdf-ctrl-btn{width:44px;height:44px;font-size:18px;border-radius:10px}
+  .pdf-page-info{font-size:12px;padding:0 4px}
+  /* Canvas — edge to edge, extra bottom for mobile bar */
+  .pdf-canvas-wrap{padding:8px 4px 90px}
+  /* Float timer — smaller on mobile */
+  #pdf-float-timer{top:60px;right:10px;padding:5px 12px;gap:6px;border-radius:10px}
+  #pdf-float-timer .ft-mode{font-size:8px;padding:1px 5px}
+  #pdf-float-timer .ft-time{font-size:16px}
+  /* Break overlay text */
+  .bo-time{font-size:60px}
+  .bo-sub{font-size:13px;padding:0 16px}
 }
+@media(max-width:380px){
+  .pdf-title{display:none} /* hide title on very small screens to save space */
+  .pdf-ctrl-btn{width:40px;height:40px;font-size:17px}
+  #pdf-float-timer{top:56px;right:8px}
+}
+/* Touch-friendly: bigger tap zone on page nav buttons */
+.pdf-ctrl-btn{position:relative}
+.pdf-ctrl-btn::after{content:'';position:absolute;inset:-6px;border-radius:inherit}
+/* Swipe hint animation on first load */
+@keyframes swipeHint{0%{opacity:0;transform:translateX(0)}30%{opacity:.6;transform:translateX(-20px)}70%{opacity:.6;transform:translateX(20px)}100%{opacity:0;transform:translateX(0)}}
+#swipe-hint{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.7);color:rgba(255,255,255,.7);
+  padding:8px 20px;border-radius:50px;font-size:13px;font-family:'DM Sans',sans-serif;
+  pointer-events:none;display:none;z-index:7200;white-space:nowrap}
+#swipe-hint.show{display:block;animation:swipeHint 2s ease forwards}
 </style>
 </head>
 <body>
@@ -944,6 +969,7 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
 
 <!-- ══ PDF READER PAGE ══ -->
 <div id="pdf-page" class="page">
+  <div id="swipe-hint">← Swipe to change page →</div>
   <!-- Floating timer for PDF page -->
   <div id="pdf-float-timer">
     <span class="ft-mode" id="pft-mode">FOCUS</span>
@@ -2258,6 +2284,8 @@ async function renderPdfPage(num){
   document.getElementById('pdf-loading').style.display='none';
   canvas.style.display='block';
   document.getElementById('pdf-canvas-wrap').scrollTop=0;
+  // Sync mobile bottom bar page info
+  if(window._syncPdfBar) window._syncPdfBar();
   if(pdfPendingPage){const p=pdfPendingPage;pdfPendingPage=null;await renderPdfPage(p);}
 }
 
@@ -2285,18 +2313,109 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft'||e.key==='ArrowUp') pdfGoPage(-1);
 });
 
-// Swipe support for PDF on mobile
+// ── PDF Touch Gestures (Android-friendly) ──
 (function(){
-  let tx=0,ty=0;
   const wrap=document.getElementById('pdf-canvas-wrap');
-  wrap.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
-  wrap.addEventListener('touchend',e=>{
-    const dx=e.changedTouches[0].clientX-tx;
-    const dy=e.changedTouches[0].clientY-ty;
-    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>50){
-      pdfGoPage(dx<0?1:-1);
+  let t1x=0,t1y=0,t2Dist=0;
+  let swipeHintShown=false;
+
+  function showSwipeHint(){
+    if(swipeHintShown) return;
+    swipeHintShown=true;
+    const h=document.getElementById('swipe-hint');
+    h.classList.add('show');
+    setTimeout(()=>h.classList.remove('show'),2200);
+  }
+
+  wrap.addEventListener('touchstart',e=>{
+    if(e.touches.length===1){
+      t1x=e.touches[0].clientX;
+      t1y=e.touches[0].clientY;
+      showSwipeHint();
+    } else if(e.touches.length===2){
+      // Pinch start — record initial distance
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      t2Dist=Math.hypot(dx,dy);
     }
   },{passive:true});
+
+  wrap.addEventListener('touchmove',e=>{
+    if(e.touches.length===2){
+      // Pinch zoom
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const newDist=Math.hypot(dx,dy);
+      if(t2Dist>0){
+        const ratio=newDist/t2Dist;
+        const newScale=Math.min(3,Math.max(0.4,pdfScale*ratio));
+        if(Math.abs(newScale-pdfScale)>0.05){
+          pdfScale=newScale;
+          t2Dist=newDist;
+          renderPdfPage(pdfPage);
+        }
+      }
+    }
+  },{passive:true});
+
+  wrap.addEventListener('touchend',e=>{
+    if(e.changedTouches.length===1&&e.touches.length===0){
+      const dx=e.changedTouches[0].clientX-t1x;
+      const dy=e.changedTouches[0].clientY-t1y;
+      // Only trigger swipe if horizontal and significant
+      if(Math.abs(dx)>Math.abs(dy)*1.5&&Math.abs(dx)>60){
+        pdfGoPage(dx<0?1:-1); // swipe left = next, swipe right = prev
+      }
+      t2Dist=0;
+    }
+  },{passive:true});
+})();
+
+// ── PDF bottom page-turn bar (mobile only) ──
+// Inject large prev/next buttons at bottom for thumb-friendly navigation
+(function(){
+  const bar=document.createElement('div');
+  bar.id='pdf-mobile-bar';
+  bar.style.cssText=`
+    position:fixed;bottom:0;left:0;right:0;z-index:7150;
+    display:none;align-items:center;justify-content:space-between;
+    background:rgba(10,10,15,.92);border-top:1px solid rgba(255,255,255,.08);
+    backdrop-filter:blur(16px);padding:10px 16px;
+    padding-bottom:max(10px,env(safe-area-inset-bottom));
+    gap:12px;
+  `;
+  bar.innerHTML=`
+    <button id="pdf-mb-prev" style="flex:1;min-height:52px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#e8e8f0;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+      ‹ <span style="font-size:13px;font-family:'DM Sans',sans-serif;font-weight:600">Prev</span>
+    </button>
+    <div id="pdf-mb-info" style="font-family:'DM Mono',monospace;font-size:13px;color:#8888aa;white-space:nowrap;text-align:center;min-width:60px">
+      1 / 1
+    </div>
+    <button id="pdf-mb-next" style="flex:1;min-height:52px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#e8e8f0;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+      <span style="font-size:13px;font-family:'DM Sans',sans-serif;font-weight:600">Next</span> ›
+    </button>
+  `;
+  document.body.appendChild(bar);
+  document.getElementById('pdf-mb-prev').onclick=()=>pdfGoPage(-1);
+  document.getElementById('pdf-mb-next').onclick=()=>pdfGoPage(1);
+
+  // Show bar only on mobile when PDF page is active
+  function syncBar(){
+    const onPdf=document.getElementById('pdf-page').classList.contains('active');
+    const isMobile=window.innerWidth<=768;
+    bar.style.display=(onPdf&&isMobile)?'flex':'none';
+    if(onPdf){
+      const cur=document.getElementById('pdf-cur-page').innerText;
+      const tot=document.getElementById('pdf-total-pages').innerText;
+      document.getElementById('pdf-mb-info').innerText=`${cur} / ${tot}`;
+    }
+  }
+  // Observe PDF page class changes
+  new MutationObserver(syncBar).observe(document.getElementById('pdf-page'),{attributes:true,attributeFilter:['class']});
+  window.addEventListener('resize',syncBar);
+  // Patch pdfGoPage to also update mobile bar info
+  const _origPdfGoPage=pdfGoPage;
+  window._syncPdfBar=syncBar;
 })();
 
 // Wire PDF file input in FS overlay
