@@ -2,11 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0a0a0f">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f0f0f8" media="(prefers-color-scheme: light)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FocusFlow">
+<meta name="application-name" content="FocusFlow">
+<meta name="description" content="Focus timer, PDF reader, YouTube study mode and activity tracker">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>FocusFlow</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
@@ -385,59 +391,72 @@ canvas#trend-chart{max-height:200px}
 .bo-sub{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:28px;text-align:center;padding:0 20px}
 .bo-btns{display:flex;gap:10px}
 /* ══════════════════════════════════════════
-   MOBILE / ANDROID RESPONSIVE
+   ANDROID / MOBILE — COMPREHENSIVE
 ══════════════════════════════════════════ */
 
-/* Prevent text size inflate on rotation */
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* Text size adjustment */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-behavior:smooth}
+*{-webkit-tap-highlight-color:transparent}
 
-/* Remove hover effects on touch — they get stuck */
-@media (hover:none) {
+/* Remove stuck hover states on touch devices */
+@media(hover:none){
   .stat-card:hover{transform:none}
   .btn:hover{transform:none;box-shadow:none}
   .bp:hover{box-shadow:0 4px 18px rgba(124,107,255,.3)}
+  .bg:hover{box-shadow:0 4px 16px rgba(107,255,184,.2)}
   .card:hover{border-color:rgba(255,255,255,.08)}
   .ti:hover{background:rgba(255,255,255,.02);border-color:transparent}
   .hd:hover{background:rgba(255,255,255,.02)}
   .note-item:hover{background:rgba(255,255,255,.02);border-color:var(--glass-b)}
+  .vm-btn:hover{background:none;color:var(--faint)}
+  .vm-btn.active:hover{background:rgba(124,107,255,.2);color:var(--a)}
 }
 
-/* Bigger touch targets for all buttons */
-@media (max-width:768px){
-  /* Base */
-  .app{padding:16px 12px 100px} /* bottom padding for nav bar */
+/* Touch feedback */
+.btn:active{opacity:.82;transform:scale(.97)!important}
+.mn-btn:active{opacity:.7}
+.ti:active{background:rgba(255,255,255,.06)!important}
+.nav-arr:active{background:rgba(124,107,255,.2)!important}
+.chk:active{border-color:var(--a);transform:scale(1.15)}
+.pdf-ctrl-btn:active{background:rgba(124,107,255,.2)!important;border-color:var(--a)!important}
+.pdf-back-btn:active{border-color:var(--a)!important;color:var(--text)!important}
+
+/* ── MOBILE LAYOUT (≤768px) ── */
+@media(max-width:768px){
+  /* App padding — leave room for mobile nav */
+  .app{padding:16px 12px calc(80px + env(safe-area-inset-bottom))}
 
   /* Topbar */
-  .topbar{margin-bottom:16px;gap:8px}
-  .topbar-right{gap:6px}
+  .topbar{margin-bottom:16px;gap:8px;flex-wrap:wrap}
+  .topbar-right{gap:6px;flex-wrap:wrap}
   .theme-btn{padding:8px 12px;font-size:12px}
-  .logo{font-size:20px}
+  .logo{font-size:19px}
   .logo-sub{font-size:10px}
+  #open-notebook-btn{font-size:12px;padding:8px 10px}
 
-  /* Stats — 2 col on mid mobile */
+  /* Stats grid */
   .stats-grid{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
   .stat-card{padding:14px 16px}
-  .stat-val{font-size:22px}
+  .stat-val{font-size:22px;letter-spacing:-0.5px}
+  .stat-lbl{font-size:9px}
+  .bar-sub{font-size:11px}
 
-  /* Main grid — always 1 col on mobile */
+  /* Main grid — single column */
   .main-grid{grid-template-columns:1fr;gap:12px}
   .card{padding:18px 16px;border-radius:16px}
 
-  /* Buttons — minimum 44px touch target */
+  /* Buttons — 44px minimum touch target */
   .btn{min-height:44px;padding:11px 14px;font-size:14px}
-  .bsm{min-height:38px;padding:9px 12px;font-size:13px}
+  .bsm{min-height:40px;padding:9px 12px;font-size:13px}
 
-  /* Inputs */
+  /* Inputs — 16px prevents iOS/Android zoom */
   input[type=text],input[type=number],select,textarea{
-    font-size:16px; /* prevent iOS zoom on focus */
-    padding:12px 14px;min-height:44px
-  }
+    font-size:16px!important;padding:12px 14px;min-height:44px}
   textarea{min-height:100px}
 
   /* Tasks */
-  .task-row{grid-template-columns:1fr auto}
-  .task-row input[type=number]{width:72px}
-  .task-row .btn{grid-column:auto}
+  .task-row{grid-template-columns:1fr auto;gap:8px}
+  .task-row input[type=number]{width:72px;min-height:44px}
   .ti{padding:13px 12px;gap:12px}
   .chk{width:24px;height:24px;font-size:13px}
   .tt{font-size:15px;white-space:normal;word-break:break-word}
@@ -452,101 +471,127 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .time-row input{width:76px;font-size:22px}
   .cycle-opts{grid-template-columns:1fr 1fr;gap:8px}
 
-  /* FS overlay */
-  .fs-ring-wrap{width:200px;height:200px}
-  .fs-timer-disp{font-size:56px}
-  .fs-btns .btn{min-height:48px;padding:13px 18px;font-size:14px;min-width:100px}
-  .fs-back{top:16px;left:12px;padding:10px 14px}
-  .fs-pip{top:16px;right:12px}
-  .fs-quote{font-size:14px;margin-bottom:20px;padding:0 16px}
-  .fs-yt-input{padding:0 12px}
-  .fs-yt-input input{font-size:16px}
+  /* FS Timer overlay — Android optimized */
+  #fs-overlay{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  .fs-ring-wrap{width:200px;height:200px;margin-bottom:16px}
+  .fs-timer-disp{font-size:56px;letter-spacing:-2px}
+  .fs-quote{font-size:13px;margin-bottom:16px;padding:0 20px;line-height:1.6}
+  .fs-mode-badge{margin-bottom:10px;font-size:10px}
+  .fs-cycles{margin-bottom:14px;gap:6px}
+  .cy-dot{width:22px;height:7px}
+  .fs-btns{gap:10px;margin-bottom:12px;padding:0 12px}
+  .fs-btns .btn{min-height:52px;padding:13px 16px;font-size:15px;flex:1;min-width:0}
+  .fs-back{top:max(16px,env(safe-area-inset-top));left:12px;padding:10px 14px;font-size:13px}
+  .fs-pip{top:max(16px,env(safe-area-inset-top));right:12px}
+  .fs-yt-input{padding:0 12px;gap:8px}
+  .fs-yt-input input{font-size:16px!important;min-height:44px}
+  .fs-yt-input .btn{min-height:44px}
+  .fs-pause-info{font-size:12px}
 
   /* History */
-  .hist-list{max-height:280px}
+  .hist-list{max-height:260px}
   .hstats{gap:10px}
-
-  /* Chart */
   canvas#trend-chart{max-height:180px}
-
-  /* Data buttons */
-  .data-btns{grid-template-columns:1fr 1fr}
+  .data-btns{grid-template-columns:1fr 1fr;gap:8px}
 
   /* Notebook modal */
-  .nb-box{padding:20px 16px;border-radius:16px}
+  .nb-box{padding:20px 16px;border-radius:16px;max-height:90vh}
   .nb-io{gap:6px}
+  .nb-io .btn{font-size:12px;padding:8px 10px}
 
   /* YT page */
   .yt-layout{grid-template-columns:1fr}
-  .yt-timer-bar{padding:10px 14px;gap:8px}
+  .yt-timer-bar{padding:10px 14px;gap:8px;border-radius:12px}
   .yt-tb-time{font-size:20px}
-  .video-card-footer{padding:12px 14px;gap:8px;flex-wrap:wrap}
+  .yt-tb-mode{font-size:9px;padding:3px 7px}
+  .video-card-footer{padding:12px 14px;gap:6px;flex-wrap:wrap}
   .view-mode-btns{flex-wrap:wrap;gap:4px}
-  .vm-btn{min-height:36px;padding:6px 10px;font-size:12px}
-  .notes-io-btns .btn{min-height:38px}
+  .vm-btn{min-height:38px;padding:7px 10px;font-size:12px}
+  .notes-io-btns .btn{min-height:40px}
   .notes-card{padding:16px 14px}
 
-  /* Focus guard */
+  /* ── PDF READER — Android ── */
+  .pdf-topbar{
+    padding:max(10px,env(safe-area-inset-top)) 12px 10px;
+    gap:6px;min-height:54px;flex-wrap:nowrap;overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .pdf-back-btn{padding:10px 16px;font-size:14px;min-height:44px;flex-shrink:0}
+  .pdf-title{font-size:13px;min-width:0;max-width:110px}
+  .pdf-controls{gap:5px;flex-shrink:0}
+  .pdf-ctrl-btn{width:46px;height:46px;font-size:19px;border-radius:10px}
+  .pdf-page-info{font-size:12px;padding:0 4px;min-width:48px;text-align:center}
+  .pdf-canvas-wrap{padding:8px 0 90px;-webkit-overflow-scrolling:touch}
+  #pdf-page-container{margin:0 auto}
+  #pdf-float-timer{
+    top:max(62px,calc(env(safe-area-inset-top)+56px));
+    right:10px;padding:6px 14px;gap:8px;border-radius:10px
+  }
+  #pdf-float-timer .ft-mode{font-size:8px;padding:2px 6px}
+  #pdf-float-timer .ft-time{font-size:17px}
+
+  /* Focus guard mobile */
   .fg-title{font-size:20px}
   .fg-countdown{font-size:52px}
-  .fg-quote{font-size:15px;padding:0 16px}
+  .fg-quote{font-size:15px;padding:0 16px;margin-bottom:20px}
+  .fg-bar{width:260px}
+  #focus-guard .btn{min-height:50px;font-size:15px;min-width:140px}
+
+  /* Quit guard mobile */
+  .qg-title{font-size:20px}
+  .qg-countdown{font-size:56px}
+  .qg-quote{font-size:14px;padding:0 16px;margin-bottom:20px}
+  .qg-bar{width:260px}
+  .qg-btns .btn{min-height:50px;font-size:15px}
 
   /* Break overlay */
   .bo-time{font-size:64px}
-  .bo-sub{font-size:13px}
+  .bo-sub{font-size:13px;padding:0 16px}
+  .bo-btns .btn{min-height:48px;font-size:14px}
 }
 
-/* Very small phones */
-@media (max-width:380px){
+/* ── VERY SMALL PHONES (≤380px) ── */
+@media(max-width:380px){
   .stats-grid{grid-template-columns:1fr}
-  .stat-val{font-size:24px}
-  .app{padding:14px 10px 100px}
-  .task-row{grid-template-columns:1fr}
-  .task-row input[type=number],.task-row .btn{width:100%}
-  .fs-timer-disp{font-size:48px}
+  .app{padding:14px 10px calc(80px + env(safe-area-inset-bottom))}
+  .fs-timer-disp{font-size:46px}
   .fs-ring-wrap{width:170px;height:170px}
-  .topbar-right{flex-wrap:wrap}
+  .fs-btns .btn{font-size:13px;padding:11px 10px}
+  .pdf-title{display:none}
+  .pdf-ctrl-btn{width:42px;height:42px;font-size:17px}
+  .stat-val{font-size:20px}
+  .qg-countdown{font-size:48px}
+  .fg-countdown{font-size:46px}
 }
 
-/* Bottom navigation bar for mobile */
+/* ── BOTTOM NAV BAR ── */
 #mobile-nav{
   display:none;
   position:fixed;bottom:0;left:0;right:0;z-index:8500;
-  background:rgba(10,10,15,.95);
+  background:rgba(10,10,15,.96);
   border-top:1px solid var(--glass-b);
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  padding:8px 0 max(8px,env(safe-area-inset-bottom));
+  padding:6px 0;
+  padding-bottom:max(6px,env(safe-area-inset-bottom));
   grid-template-columns:1fr 1fr 1fr 1fr;
 }
-@media(max-width:768px){ #mobile-nav{display:grid} }
+@media(max-width:768px){#mobile-nav{display:grid}}
 .mn-btn{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:3px;padding:6px 4px;border:none;background:none;color:var(--faint);
   cursor:pointer;transition:color .2s;font-family:'DM Sans',sans-serif;
-  font-size:10px;font-weight:600;letter-spacing:.04em;min-height:52px;
+  font-size:10px;font-weight:600;letter-spacing:.04em;min-height:54px;
   -webkit-tap-highlight-color:transparent;
 }
 .mn-btn.active{color:var(--a)}
-.mn-btn svg,.mn-btn .mn-icon{font-size:20px;line-height:1;margin-bottom:1px}
-body.lm #mobile-nav{background:rgba(240,240,248,.95)}
+.mn-btn .mn-icon{font-size:22px;line-height:1;margin-bottom:2px;display:block}
+body.lm #mobile-nav{background:rgba(240,240,248,.96)}
 
-/* Safe area for notch phones */
-.app{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
-@media(min-width:769px){.app{padding-bottom:40px}}
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
 
-/* Touch feedback */
-.btn:active{opacity:.8;transform:scale(.97)}
-.mn-btn:active{opacity:.7}
-.ti:active{background:rgba(255,255,255,.06)}
-.nav-arr:active{background:rgba(124,107,255,.2)}
-.chk:active{border-color:var(--a);transform:scale(1.15)}
-
-/* Smooth scroll */
-html{scroll-behavior:smooth}
-*{-webkit-tap-highlight-color:transparent}
-
-::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:3px}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 #pip-canvas,#pip-video,#import-file,#import-notes-file{display:none}
 
@@ -634,29 +679,6 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
 }
 #pdf-break-overlay.show{display:flex;animation:fadeUp .4s ease}
 
-@media(max-width:768px){
-  /* PDF topbar — sticky, larger touch targets */
-  .pdf-topbar{padding:10px 12px;gap:6px;min-height:52px;flex-wrap:nowrap;overflow-x:auto}
-  .pdf-back-btn{padding:9px 14px;font-size:13px;min-height:44px;flex-shrink:0}
-  .pdf-title{font-size:13px;min-width:0;max-width:100px}
-  .pdf-controls{gap:4px;flex-shrink:0}
-  .pdf-ctrl-btn{width:44px;height:44px;font-size:18px;border-radius:10px}
-  .pdf-page-info{font-size:12px;padding:0 4px}
-  /* Canvas — edge to edge, extra bottom for mobile bar */
-  .pdf-canvas-wrap{padding:8px 4px 90px}
-  /* Float timer — smaller on mobile */
-  #pdf-float-timer{top:60px;right:10px;padding:5px 12px;gap:6px;border-radius:10px}
-  #pdf-float-timer .ft-mode{font-size:8px;padding:1px 5px}
-  #pdf-float-timer .ft-time{font-size:16px}
-  /* Break overlay text */
-  .bo-time{font-size:60px}
-  .bo-sub{font-size:13px;padding:0 16px}
-}
-@media(max-width:380px){
-  .pdf-title{display:none} /* hide title on very small screens to save space */
-  .pdf-ctrl-btn{width:40px;height:40px;font-size:17px}
-  #pdf-float-timer{top:56px;right:8px}
-}
 /* Touch-friendly: bigger tap zone on page nav buttons */
 .pdf-ctrl-btn{position:relative}
 .pdf-ctrl-btn::after{content:'';position:absolute;inset:-6px;border-radius:inherit}
@@ -2491,6 +2513,15 @@ function _doShowPage(name){
 // ══════════════════════════════════════════
 lastKnownDate=today();cleanOld();renderTasks();renderHistory();checkStreak();updateBackup();renderNotes();renderNotebook();updateVideoWatchUI();
 startMasterInterval();
+
+// Register PWA service worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').then(reg=>{
+      console.log('FocusFlow SW registered');
+    }).catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
