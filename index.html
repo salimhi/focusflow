@@ -226,8 +226,46 @@ canvas#trend-chart{max-height:200px}
 .yt-tb-time{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-1px;color:var(--text)}
 .yt-tb-right{margin-left:auto;display:flex;gap:8px;align-items:center}
 .yt-tb-pause{font-size:12px;color:var(--red);font-weight:600;font-family:'DM Mono',monospace}
-.yt-layout{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
+
+/* View mode buttons */
+.view-mode-btns{display:flex;gap:4px;align-items:center;background:rgba(255,255,255,.04);
+  border:1px solid var(--glass-b);border-radius:10px;padding:4px}
+.vm-btn{background:none;border:none;color:var(--faint);cursor:pointer;font-size:14px;
+  padding:5px 9px;border-radius:7px;transition:all .2s;display:flex;align-items:center;gap:4px;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600}
+.vm-btn:hover{color:var(--text);background:rgba(255,255,255,.06)}
+.vm-btn.active{background:rgba(124,107,255,.2);color:var(--a)}
+
+/* Layout modes */
+.yt-layout{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start;transition:all .35s ease}
 @media(max-width:900px){.yt-layout{grid-template-columns:1fr}}
+
+/* Cinema mode — full width video, notes below */
+.yt-layout.cinema{grid-template-columns:1fr;display:block}
+.yt-layout.cinema .notes-card{margin-top:16px}
+.yt-layout.cinema .video-wrapper{padding-top:52%}
+
+/* Fullscreen mode — video takes entire viewport */
+#yt-page.fs-mode{background:var(--bg)}
+#yt-page.fs-mode .yt-topbar{display:none}
+#yt-page.fs-mode .yt-layout .notes-card{display:none}
+#yt-page.fs-mode .yt-layout{grid-template-columns:1fr;display:block;margin:0}
+#yt-page.fs-mode .app{max-width:100%;padding:0}
+#yt-page.fs-mode .yt-timer-bar{border-radius:0;margin-bottom:0;border-left:none;border-right:none;border-top:none}
+#yt-page.fs-mode .video-card{border-radius:0;border:none;border-top:none}
+#yt-page.fs-mode .video-wrapper{padding-top:0;height:calc(100vh - 60px)}
+#yt-page.fs-mode .video-wrapper iframe{position:absolute;inset:0;width:100%;height:100%}
+#yt-page.fs-mode .video-card-footer{border-radius:0}
+/* Exit fullpage floating button */
+#exit-fullpage-btn{
+  display:none;position:fixed;top:16px;left:16px;z-index:8000;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.15);border-radius:50px;
+  color:#fff;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;
+  padding:7px 14px;cursor:pointer;transition:all .2s;gap:6px;align-items:center;
+}
+#exit-fullpage-btn:hover{background:rgba(124,107,255,.4);border-color:var(--a)}
+#yt-page.fs-mode #exit-fullpage-btn{display:flex}
 .video-card{background:var(--glass);border:1px solid var(--glass-b);border-radius:var(--r);
   overflow:hidden;box-shadow:var(--sh);backdrop-filter:blur(20px)}
 .video-wrapper{position:relative;width:100%;padding-top:56.25%;background:#000;overflow:hidden}
@@ -506,6 +544,7 @@ canvas#trend-chart{max-height:200px}
 
 <!-- ══ YOUTUBE STUDY PAGE ══ -->
 <div id="yt-page" class="page">
+<button id="exit-fullpage-btn" onclick="setViewMode('default')">✕ Exit Full</button>
 <div class="app">
   <div class="yt-topbar">
     <div class="yt-title" id="yt-page-title">Study Mode</div>
@@ -535,8 +574,12 @@ canvas#trend-chart{max-height:200px}
         </div>
         <div class="video-card-footer">
           <div class="vid-info"><div class="vid-url-short" id="vid-url-short">—</div></div>
-          <button class="btn bgr bsm" id="yt-change-btn">Change Video</button>
-          <button class="btn byt bsm" id="yt-fullscreen-btn">⛶ Fullscreen</button>
+          <div class="view-mode-btns">
+            <button class="vm-btn active" id="vm-default" title="Default view" onclick="setViewMode('default')">⊞ Default</button>
+            <button class="vm-btn" id="vm-cinema" title="Cinema mode" onclick="setViewMode('cinema')">▬ Cinema</button>
+            <button class="vm-btn" id="vm-fullpage" title="Fullscreen page" onclick="setViewMode('fullpage')">⛶ Full</button>
+          </div>
+          <button class="btn bgr bsm" id="yt-change-btn">Change</button>
         </div>
       </div>
     </div>
@@ -600,13 +643,8 @@ function randomDistractQuote(){
 }
 
 // ══════════════════════════════════════════
-// PAGE SYSTEM
+// PAGE SYSTEM — defined after setViewMode below
 // ══════════════════════════════════════════
-function showPage(name){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById(name==='main'?'main-page':'yt-page').classList.add('active');
-  syncThemeBtns();
-}
 
 // ══════════════════════════════════════════
 // THEME
@@ -1486,12 +1524,41 @@ document.getElementById('fs-yt-go').onclick=()=>openYtFromInput('fs-yt-url');
 document.getElementById('fs-yt-url').onkeypress=e=>{if(e.key==='Enter')openYtFromInput('fs-yt-url');};
 document.getElementById('yt-change-btn').onclick=()=>{const url=prompt('Enter new YouTube URL:');if(url)loadYoutube(url.trim());};
 
-// Fullscreen video
-document.getElementById('yt-fullscreen-btn').onclick=()=>{
-  const wrap=document.getElementById('video-wrapper');
-  if(document.fullscreenElement)document.exitFullscreen();
-  else wrap.requestFullscreen&&wrap.requestFullscreen();
-};
+// ── View modes: default / cinema / fullpage ──
+let currentViewMode='default';
+function setViewMode(mode){
+  currentViewMode=mode;
+  const layout=document.getElementById('yt-page').querySelector('.yt-layout');
+  const ytPage=document.getElementById('yt-page');
+
+  // Reset all
+  layout.classList.remove('cinema');
+  ytPage.classList.remove('fs-mode');
+
+  // Update button states
+  ['default','cinema','fullpage'].forEach(m=>{
+    document.getElementById(`vm-${m}`).classList.toggle('active', m===mode);
+  });
+
+  if(mode==='cinema'){
+    layout.classList.add('cinema');
+  } else if(mode==='fullpage'){
+    ytPage.classList.add('fs-mode');
+    // Scroll to top so video is visible immediately
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+}
+
+// Reset view mode when leaving YT page
+const _origShowPage=showPage;
+function showPage(name){
+  if(name==='main'&&currentViewMode!=='default'){
+    setViewMode('default');
+  }
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(name==='main'?'main-page':'yt-page').classList.add('active');
+  syncThemeBtns();
+}
 
 // Video fullscreen — show timer overlay + auto-hide
 // Also move focus guard into fullscreen container so it renders above iframe
