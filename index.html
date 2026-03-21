@@ -596,7 +596,7 @@ canvas#trend-chart{max-height:200px}
     <div>
       <div class="video-card">
         <div class="video-wrapper" id="video-wrapper">
-          <iframe id="yt-iframe" src="" allowfullscreen allow="autoplay; fullscreen"></iframe>
+          <iframe id="yt-iframe" src="" allow="autoplay"></iframe>
           <div class="video-fs-timer" id="video-fs-timer">
             <span class="vft-mode" id="vft-mode">FOCUS</span>
             <span id="vft-time">25:00</span>
@@ -607,7 +607,8 @@ canvas#trend-chart{max-height:200px}
           <div class="view-mode-btns">
             <button class="vm-btn active" id="vm-default" title="Default view" onclick="setViewMode('default')">⊞ Default</button>
             <button class="vm-btn" id="vm-cinema" title="Cinema mode" onclick="setViewMode('cinema')">▬ Cinema</button>
-            <button class="vm-btn" id="vm-fullpage" title="Fullscreen page" onclick="setViewMode('fullpage')">⛶ Full</button>
+            <button class="vm-btn" id="vm-fullpage" title="Full page" onclick="setViewMode('fullpage')">⛶ Full page</button>
+            <button class="vm-btn" id="vm-browser-fs" title="Browser fullscreen" onclick="toggleBrowserFullscreen()">⤢ Fullscreen</button>
           </div>
           <button class="btn bgr bsm" id="yt-change-btn">Change</button>
         </div>
@@ -1609,6 +1610,14 @@ document.getElementById('fs-yt-go').onclick=()=>openYtFromInput('fs-yt-url');
 document.getElementById('fs-yt-url').onkeypress=e=>{if(e.key==='Enter')openYtFromInput('fs-yt-url');};
 document.getElementById('yt-change-btn').onclick=()=>{const url=prompt('Enter new YouTube URL:');if(url)loadYoutube(url.trim());};
 
+function toggleBrowserFullscreen(){
+  if(document.fullscreenElement){
+    document.exitFullscreen();
+  }else{
+    videoWrapEl.requestFullscreen&&videoWrapEl.requestFullscreen();
+  }
+}
+
 // ── View modes: default / cinema / fullpage ──
 let currentViewMode='default';
 function setViewMode(mode){
@@ -1643,33 +1652,44 @@ function showPage(name){
   if(name==='yt'&&timerRunning) updateYtTimerBar();
 }
 
-// Video fullscreen — manage embedded absolute timer inside wrapper
+// Video fullscreen — we own the fullscreen (allowfullscreen removed from iframe)
+// So document.fullscreenElement === videoWrapEl when fullscreen is active
 let vidFsHideTimer=null;
 const videoWrapEl=document.getElementById('video-wrapper');
 const focusGuardEl=document.getElementById('focus-guard');
+const floatingTimerEl=document.getElementById('floating-timer');
 
 document.addEventListener('fullscreenchange',()=>{
   const fst=document.getElementById('video-fs-timer');
   if(document.fullscreenElement===videoWrapEl){
     // Move focus guard inside fullscreen container
-    focusGuardEl.style.position='absolute';
-    focusGuardEl.style.zIndex='9999';
+    focusGuardEl.style.cssText='position:absolute;inset:0;z-index:9999;';
     videoWrapEl.appendChild(focusGuardEl);
 
-    // Show embedded timer inside the fullscreened wrapper
+    // Move floating timer inside fullscreen container — position fixed relative to fullscreen viewport
+    floatingTimerEl.style.cssText='position:fixed;top:14px;right:16px;z-index:9100;display:none;align-items:center;gap:10px;font-family:\'DM Mono\',monospace;color:#fff;background:rgba(0,0,0,.75);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:7px 16px;box-shadow:0 4px 20px rgba(0,0,0,.4);pointer-events:none;user-select:none;transition:opacity .4s;';
+    videoWrapEl.appendChild(floatingTimerEl);
+    if(timerRunning){floatingTimerEl.classList.add('show');floatingTimerEl.classList.remove('fade');}
+
+    // Also show embedded timer
     if(timerRunning) fst.classList.add('show');
     clearTimeout(vidFsHideTimer);
-    vidFsHideTimer=setTimeout(()=>fst.classList.add('fade'),4000);
+    vidFsHideTimer=setTimeout(()=>{fst.classList.add('fade');scheduleFloatingTimerFade();},4000);
     videoWrapEl.addEventListener('mousemove',onVidMouseMove);
     videoWrapEl.addEventListener('click',onVidMouseMove);
-
-    // Also fade floating timer after delay (it's fixed so still visible)
-    scheduleFloatingTimerFade();
   }else{
     // Restore focus guard to body
-    focusGuardEl.style.position='fixed';
-    focusGuardEl.style.zIndex='9500';
+    focusGuardEl.style.cssText='position:fixed;inset:0;z-index:9500;';
     document.body.appendChild(focusGuardEl);
+
+    // Restore floating timer to body
+    floatingTimerEl.style.cssText='position:fixed;top:14px;right:16px;z-index:9100;';
+    document.body.appendChild(floatingTimerEl);
+    // Re-show if still running
+    if(timerRunning&&document.getElementById('yt-page').classList.contains('active')){
+      floatingTimerEl.classList.add('show');
+      floatingTimerEl.classList.remove('fade');
+    }
 
     fst.classList.remove('show');fst.classList.remove('fade');
     clearTimeout(vidFsHideTimer);
