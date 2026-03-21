@@ -580,6 +580,27 @@ html{scroll-behavior:smooth}
 .pdf-canvas-wrap{position:relative;z-index:1;flex:1;overflow:auto;
   display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;background:#1a1a1a}
 body.lm .pdf-canvas-wrap{background:#e8e8e8}
+/* PDF text layer — invisible overlay enabling text selection */
+.pdf-text-layer{
+  position:absolute;
+  top:0;left:0;
+  width:100%;height:100%;
+  overflow:hidden;
+  opacity:0.2;
+  line-height:1;
+  pointer-events:auto;
+  user-select:text;
+  -webkit-user-select:text;
+}
+.pdf-text-layer span{
+  color:transparent;
+  position:absolute;
+  white-space:pre;
+  cursor:text;
+  transform-origin:0% 0%;
+}
+.pdf-text-layer span::selection{background:rgba(124,107,255,.35);color:transparent;}
+.pdf-text-layer span::-moz-selection{background:rgba(124,107,255,.35);color:transparent;}
 #pdf-canvas{display:block;box-shadow:0 8px 40px rgba(0,0,0,.5);border-radius:2px;max-width:100%}
 .pdf-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;
   position:absolute;inset:0}
@@ -957,7 +978,10 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
       <div class="pdf-loading-ring"></div>
       <div style="margin-top:12px;font-size:14px;color:var(--dim)">Loading PDF…</div>
     </div>
-    <canvas id="pdf-canvas"></canvas>
+    <div id="pdf-page-container" style="position:relative;display:inline-block;line-height:0">
+      <canvas id="pdf-canvas"></canvas>
+      <div id="pdf-text-layer" class="pdf-text-layer"></div>
+    </div>
   </div>
 </div>
 
@@ -2196,11 +2220,43 @@ async function renderPdfPage(num){
   const canvas=document.getElementById('pdf-canvas');
   const ctx2=canvas.getContext('2d');
   canvas.width=vp.width;canvas.height=vp.height;
+
+  // Render the visual canvas
   await page.render({canvasContext:ctx2,viewport:vp}).promise;
+
+  // Build text layer for selection/copy
+  const textLayerDiv=document.getElementById('pdf-text-layer');
+  textLayerDiv.innerHTML=''; // clear previous
+  textLayerDiv.style.width=vp.width+'px';
+  textLayerDiv.style.height=vp.height+'px';
+  try{
+    const textContent=await page.getTextContent();
+    const lib=await loadPdfjsLib();
+    // PDF.js 4.x uses TextLayer class
+    if(lib.TextLayer){
+      const tl=new lib.TextLayer({
+        textContentSource:textContent,
+        container:textLayerDiv,
+        viewport:vp,
+      });
+      await tl.render();
+    }else{
+      // Fallback: manual span placement for older PDF.js
+      textContent.items.forEach(item=>{
+        if(!item.str) return;
+        const span=document.createElement('span');
+        const tx=lib.Util.transform(vp.transform,item.transform);
+        const style=`left:${tx[4]}px;top:${tx[5]}px;font-size:${Math.sqrt(tx[0]*tx[0]+tx[1]*tx[1])}px;`;
+        span.style.cssText=style;
+        span.textContent=item.str;
+        textLayerDiv.appendChild(span);
+      });
+    }
+  }catch(e){/* text layer optional — canvas still works */}
+
   pdfRendering=false;
   document.getElementById('pdf-loading').style.display='none';
   canvas.style.display='block';
-  // Scroll to top on page change
   document.getElementById('pdf-canvas-wrap').scrollTop=0;
   if(pdfPendingPage){const p=pdfPendingPage;pdfPendingPage=null;await renderPdfPage(p);}
 }
