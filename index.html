@@ -580,17 +580,17 @@ html{scroll-behavior:smooth}
 .pdf-canvas-wrap{position:relative;z-index:1;flex:1;overflow:auto;
   display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;background:#1a1a1a}
 body.lm .pdf-canvas-wrap{background:#e8e8e8}
-/* PDF text layer — invisible overlay enabling text selection */
+/* PDF text layer — transparent overlay for text selection */
 .pdf-text-layer{
   position:absolute;
   top:0;left:0;
   width:100%;height:100%;
   overflow:hidden;
-  opacity:0.2;
   line-height:1;
   pointer-events:auto;
   user-select:text;
   -webkit-user-select:text;
+  z-index:2;
 }
 .pdf-text-layer span{
   color:transparent;
@@ -598,9 +598,16 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
   white-space:pre;
   cursor:text;
   transform-origin:0% 0%;
+  border-radius:1px;
 }
-.pdf-text-layer span::selection{background:rgba(124,107,255,.35);color:transparent;}
-.pdf-text-layer span::-moz-selection{background:rgba(124,107,255,.35);color:transparent;}
+.pdf-text-layer span::selection{
+  background:rgba(124,107,255,.45);
+  color:transparent;
+}
+.pdf-text-layer span::-moz-selection{
+  background:rgba(124,107,255,.45);
+  color:transparent;
+}
 #pdf-canvas{display:block;box-shadow:0 8px 40px rgba(0,0,0,.5);border-radius:2px;max-width:100%}
 .pdf-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;
   position:absolute;inset:0}
@@ -2247,44 +2254,45 @@ async function renderPdfPage(num){
   const ctx2=canvas.getContext('2d');
   canvas.width=vp.width;canvas.height=vp.height;
 
-  // Render the visual canvas
+  // Render visual canvas
   await page.render({canvasContext:ctx2,viewport:vp}).promise;
 
-  // Build text layer for selection/copy
+  // Build selectable text layer
   const textLayerDiv=document.getElementById('pdf-text-layer');
-  textLayerDiv.innerHTML=''; // clear previous
+  textLayerDiv.innerHTML='';
   textLayerDiv.style.width=vp.width+'px';
   textLayerDiv.style.height=vp.height+'px';
   try{
+    const lib=await loadPdfJs(); // ← correct function name
     const textContent=await page.getTextContent();
-    const lib=await loadPdfjsLib();
-    // PDF.js 4.x uses TextLayer class
-    if(lib.TextLayer){
-      const tl=new lib.TextLayer({
-        textContentSource:textContent,
-        container:textLayerDiv,
-        viewport:vp,
-      });
-      await tl.render();
-    }else{
-      // Fallback: manual span placement for older PDF.js
-      textContent.items.forEach(item=>{
-        if(!item.str) return;
-        const span=document.createElement('span');
-        const tx=lib.Util.transform(vp.transform,item.transform);
-        const style=`left:${tx[4]}px;top:${tx[5]}px;font-size:${Math.sqrt(tx[0]*tx[0]+tx[1]*tx[1])}px;`;
-        span.style.cssText=style;
-        span.textContent=item.str;
-        textLayerDiv.appendChild(span);
-      });
-    }
-  }catch(e){/* text layer optional — canvas still works */}
+    textContent.items.forEach(item=>{
+      if(!item.str) return;
+      const span=document.createElement('span');
+      // Transform PDF coords → viewport screen coords
+      const tx=lib.Util.transform(vp.transform, item.transform);
+      const fontSize=Math.hypot(tx[0],tx[1]);
+      if(fontSize<1) return; // skip invisible items
+      const angle=Math.atan2(tx[1],tx[0]);
+      span.style.left=tx[4]+'px';
+      span.style.top=(tx[5]-fontSize)+'px';
+      span.style.fontSize=fontSize+'px';
+      // Scale the span width to match the actual text width in the PDF
+      if(item.width>0){
+        const scaledW=item.width*(fontSize/item.transform[0]);
+        span.style.width=scaledW+'px';
+      }
+      if(Math.abs(angle)>0.01) span.style.transform=`rotate(${angle}rad)`;
+      span.textContent=item.str;
+      textLayerDiv.appendChild(span);
+    });
+  }catch(e){
+    console.warn('PDF text layer error:',e);
+  }
 
   pdfRendering=false;
   document.getElementById('pdf-loading').style.display='none';
   canvas.style.display='block';
   document.getElementById('pdf-canvas-wrap').scrollTop=0;
-  // Sync mobile bottom bar page info
   if(window._syncPdfBar) window._syncPdfBar();
   if(pdfPendingPage){const p=pdfPendingPage;pdfPendingPage=null;await renderPdfPage(p);}
 }
