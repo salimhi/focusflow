@@ -279,6 +279,9 @@ canvas#trend-chart{max-height:200px}
 /* Focus guard — works both as position:fixed (normal) and position:absolute (inside fullscreen wrapper) */
 #focus-guard{position:fixed;inset:0;z-index:9500;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.85);backdrop-filter:blur(20px)}
 #focus-guard.show{display:flex;animation:fadeUp .3s ease}
+/* Make focus guard visible inside fullscreen video by appending it to fullscreen element via JS */
+#video-wrapper:fullscreen #focus-guard,
+#video-wrapper:-webkit-full-screen #focus-guard{position:absolute;z-index:9999}
 .fg-quote{font-family:'DM Sans',sans-serif;font-style:italic;font-size:17px;color:rgba(255,255,255,.5);text-align:center;max-width:500px;line-height:1.8;margin-bottom:28px;padding:0 24px}
 .fg-quote-attr{display:block;font-style:normal;font-size:12px;color:rgba(255,255,255,.3);margin-top:6px;text-transform:uppercase;letter-spacing:.06em}
 .fg-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;text-align:center}
@@ -1310,27 +1313,6 @@ window.addEventListener('message',e=>{
   }
 });
 
-// ── Transparent click overlay as fallback pause detector ──
-// When user clicks the video (which pauses it), we get a brief focus loss.
-// We use a transparent div over the iframe that catches the first click,
-// passes it through, then watches for the resulting state change.
-// This is a belt-and-suspenders approach alongside postMessage.
-(function setupClickOverlay(){
-  const wrapper=document.getElementById('video-wrapper');
-  const overlay=document.createElement('div');
-  overlay.id='yt-click-overlay';
-  overlay.style.cssText='position:absolute;inset:0;z-index:5;cursor:pointer;background:transparent;';
-  wrapper.appendChild(overlay);
-
-  overlay.addEventListener('click',()=>{
-    // Pass click through to iframe by hiding overlay briefly
-    overlay.style.pointerEvents='none';
-    setTimeout(()=>{overlay.style.pointerEvents='auto';},500);
-    // If timer is running in focus mode and video was playing, anticipate a pause
-    // The postMessage handler will confirm it — this just primes us
-  });
-})();
-
 // ── START ──
 document.getElementById('start-btn').onclick=()=>{
   const tag=document.getElementById('tag-select').value;
@@ -1512,19 +1494,19 @@ document.getElementById('yt-fullscreen-btn').onclick=()=>{
   else wrap.requestFullscreen&&wrap.requestFullscreen();
 };
 
-// Video fullscreen — show timer + auto-hide + move focus guard inside fullscreen element
+// Video fullscreen — show timer overlay + auto-hide
+// Also move focus guard into fullscreen container so it renders above iframe
 let vidFsHideTimer=null;
-const focusGuardEl=document.getElementById('focus-guard');
 const videoWrapEl=document.getElementById('video-wrapper');
+const focusGuardEl=document.getElementById('focus-guard');
 
 document.addEventListener('fullscreenchange',()=>{
   const fst=document.getElementById('video-fs-timer');
   if(document.fullscreenElement===videoWrapEl){
-    // Move focus guard inside the fullscreen container so it renders on top
-    videoWrapEl.appendChild(focusGuardEl);
-    // Fix focus guard position inside fullscreen: use position absolute covering full wrapper
+    // Safely move focus guard inside fullscreen container
     focusGuardEl.style.position='absolute';
     focusGuardEl.style.zIndex='9999';
+    videoWrapEl.appendChild(focusGuardEl);
 
     if(timerRunning)fst.classList.add('show');
     clearTimeout(vidFsHideTimer);
@@ -1532,10 +1514,10 @@ document.addEventListener('fullscreenchange',()=>{
     videoWrapEl.addEventListener('mousemove',onVidMouseMove);
     videoWrapEl.addEventListener('click',onVidMouseMove);
   }else{
-    // Move focus guard back to body so it works outside fullscreen
-    document.body.appendChild(focusGuardEl);
+    // Move focus guard back to body — always safe
     focusGuardEl.style.position='fixed';
     focusGuardEl.style.zIndex='9500';
+    document.body.appendChild(focusGuardEl);
 
     fst.classList.remove('show');fst.classList.remove('fade');
     clearTimeout(vidFsHideTimer);
