@@ -341,7 +341,29 @@ canvas#trend-chart{max-height:200px}
 .nb-note-text{font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap}
 .nb-del{background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;padding:0;transition:color .2s}
 .nb-del:hover{color:var(--red)}
-/* Focus guard — works both as position:fixed (normal) and position:absolute (inside fullscreen wrapper) */
+/* ── Quit Guard — shown when trying to leave during focus ── */
+#quit-guard{
+  position:fixed;inset:0;z-index:9600;display:none;
+  align-items:center;justify-content:center;flex-direction:column;
+  background:rgba(0,0,0,.92);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+}
+#quit-guard.show{display:flex;animation:fadeUp .3s ease}
+.qg-emoji{font-size:52px;margin-bottom:16px;line-height:1;animation:qgShake .5s ease .3s}
+@keyframes qgShake{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+.qg-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#fff;
+  text-align:center;margin-bottom:8px;max-width:400px;line-height:1.2}
+.qg-quote{font-family:'DM Sans',sans-serif;font-style:italic;font-size:16px;
+  color:rgba(255,255,255,.45);text-align:center;max-width:480px;line-height:1.8;
+  margin-bottom:28px;padding:0 24px}
+.qg-quote-attr{display:block;font-style:normal;font-size:11px;color:rgba(255,255,255,.25);
+  margin-top:6px;text-transform:uppercase;letter-spacing:.07em}
+.qg-countdown{font-family:'DM Mono',monospace;font-size:72px;font-weight:200;
+  color:var(--a2);line-height:1;margin-bottom:12px;letter-spacing:-4px}
+.qg-sub{font-size:13px;color:rgba(255,255,255,.35);margin-bottom:28px;text-align:center}
+.qg-bar{width:320px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;margin-bottom:36px;overflow:hidden}
+.qg-bar-fill{height:100%;background:linear-gradient(90deg,var(--a),var(--a2));border-radius:3px;transition:width 1s linear}
+.qg-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.qg-btns .btn{min-width:130px;padding:13px 20px;font-size:14px}
 #focus-guard{position:fixed;inset:0;z-index:9500;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,.85);backdrop-filter:blur(20px)}
 #focus-guard.show{display:flex;animation:fadeUp .3s ease}
 /* Make focus guard visible inside fullscreen video by appending it to fullscreen element via JS */
@@ -527,6 +549,71 @@ html{scroll-behavior:smooth}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:3px}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 #pip-canvas,#pip-video,#import-file,#import-notes-file{display:none}
+
+/* ══ PDF PAGE ══ */
+#pdf-page{position:fixed;inset:0;z-index:7000;background:var(--bg);display:none;flex-direction:column}
+#pdf-page.active{display:flex}
+#pdf-page::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(ellipse 60% 40% at 50% 0%,rgba(124,107,255,.06) 0%,transparent 60%);
+  pointer-events:none;z-index:0}
+
+/* PDF topbar */
+.pdf-topbar{position:relative;z-index:2;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 16px;background:rgba(10,10,15,.9);border-bottom:1px solid var(--glass-b);
+  backdrop-filter:blur(16px);min-height:56px}
+.pdf-back-btn{background:var(--glass);border:1px solid var(--glass-b);color:var(--dim);
+  padding:7px 14px;border-radius:50px;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;
+  font-weight:600;transition:all .2s;white-space:nowrap}
+.pdf-back-btn:hover,.pdf-back-btn:active{border-color:var(--a);color:var(--text)}
+.pdf-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);
+  flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pdf-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pdf-ctrl-btn{background:var(--glass);border:1px solid var(--glass-b);color:var(--text);
+  width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:16px;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;
+  font-family:'DM Sans',sans-serif;font-weight:600}
+.pdf-ctrl-btn:hover,.pdf-ctrl-btn:active{background:rgba(124,107,255,.15);border-color:var(--a);color:var(--a)}
+.pdf-page-info{font-family:'DM Mono',monospace;font-size:13px;color:var(--dim);
+  padding:0 6px;white-space:nowrap}
+
+/* PDF canvas area */
+.pdf-canvas-wrap{position:relative;z-index:1;flex:1;overflow:auto;
+  display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;background:#1a1a1a}
+body.lm .pdf-canvas-wrap{background:#e8e8e8}
+#pdf-canvas{display:block;box-shadow:0 8px 40px rgba(0,0,0,.5);border-radius:2px;max-width:100%}
+.pdf-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:absolute;inset:0}
+.pdf-loading-ring{width:40px;height:40px;border:3px solid rgba(124,107,255,.2);
+  border-top-color:var(--a);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* PDF floating timer */
+#pdf-float-timer{
+  position:fixed;top:66px;right:16px;z-index:7100;
+  background:rgba(0,0,0,.8);backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.15);border-radius:12px;
+  padding:7px 16px;display:none;align-items:center;gap:10px;
+  font-family:'DM Mono',monospace;color:#fff;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);pointer-events:none;user-select:none;
+}
+#pdf-page.active #pdf-float-timer{display:flex}
+
+/* PDF break overlay */
+#pdf-break-overlay{
+  position:fixed;inset:0;z-index:7500;display:none;
+  align-items:center;justify-content:center;flex-direction:column;
+  background:rgba(0,0,0,.82);backdrop-filter:blur(24px);
+}
+#pdf-break-overlay.show{display:flex;animation:fadeUp .4s ease}
+
+@media(max-width:600px){
+  .pdf-topbar{padding:10px 12px;gap:8px}
+  .pdf-ctrl-btn{width:40px;height:40px}
+  .pdf-controls{gap:4px}
+  .pdf-canvas-wrap{padding:12px 8px}
+  #pdf-float-timer{top:58px;right:10px;padding:5px 12px}
+  .ft-time{font-size:16px}
+}
 </style>
 </head>
 <body>
@@ -565,6 +652,20 @@ html{scroll-behavior:smooth}
   <button class="mn-btn" id="mn-history" onclick="mobileNav('history')">
     <span class="mn-icon">📊</span>History
   </button>
+</div>
+
+<!-- ══ QUIT GUARD — shown when trying to leave during focus ══ -->
+<div id="quit-guard">
+  <div class="qg-emoji">🚫</div>
+  <div class="qg-title">You're abandoning your focus!</div>
+  <div class="qg-quote" id="qg-quote"></div>
+  <div class="qg-countdown" id="qg-countdown">20</div>
+  <div class="qg-sub">Leaving in <span id="qg-countdown-sub">20</span>s unless you stay…</div>
+  <div class="qg-bar"><div class="qg-bar-fill" id="qg-bar-fill" style="width:100%"></div></div>
+  <div class="qg-btns">
+    <button class="btn bp" id="qg-stay">✊ Stay Focused</button>
+    <button class="btn br" id="qg-leave">Leave Anyway</button>
+  </div>
 </div>
 
 <!-- ══ FOCUS GUARD ══ -->
@@ -612,6 +713,12 @@ html{scroll-behavior:smooth}
   <div class="fs-yt-input">
     <input type="text" id="fs-yt-url" placeholder="Paste YouTube URL to open Study Mode…">
     <button class="btn byt" id="fs-yt-go">▶ Study</button>
+  </div>
+  <div class="fs-yt-input" style="margin-top:8px">
+    <label class="btn bgr" id="fs-pdf-label" style="cursor:pointer;flex:1;justify-content:flex-start;gap:8px">
+      📄 <span>Upload PDF to read while focusing…</span>
+      <input type="file" id="fs-pdf-input" accept=".pdf" style="display:none">
+    </label>
   </div>
 </div>
 
@@ -814,6 +921,46 @@ html{scroll-behavior:smooth}
 </div>
 </div>
 
+<!-- ══ PDF READER PAGE ══ -->
+<div id="pdf-page" class="page">
+  <!-- Floating timer for PDF page -->
+  <div id="pdf-float-timer">
+    <span class="ft-mode" id="pft-mode">FOCUS</span>
+    <span class="ft-time" id="pft-time">25:00</span>
+  </div>
+
+  <!-- Break blur overlay (reused CSS from break-overlay but separate instance) -->
+  <div id="pdf-break-overlay">
+    <div class="bo-badge">☕ Break Time</div>
+    <div class="bo-time" id="pdf-bo-time">05:00</div>
+    <div class="bo-sub">Take a breather. Come back refreshed.<br>Focus resumes automatically.</div>
+    <div class="bo-btns"><button class="btn bgr" id="pdf-bo-skip">Skip Break →</button></div>
+  </div>
+
+  <!-- Topbar -->
+  <div class="pdf-topbar">
+    <button class="pdf-back-btn" id="pdf-back-btn">← Back</button>
+    <div class="pdf-title" id="pdf-title">PDF Reader</div>
+    <div class="pdf-controls">
+      <button class="pdf-ctrl-btn" id="pdf-prev-page">‹</button>
+      <span class="pdf-page-info"><span id="pdf-cur-page">1</span> / <span id="pdf-total-pages">1</span></span>
+      <button class="pdf-ctrl-btn" id="pdf-next-page">›</button>
+      <button class="pdf-ctrl-btn" id="pdf-zoom-out">−</button>
+      <button class="pdf-ctrl-btn" id="pdf-zoom-in">+</button>
+      <button class="pdf-ctrl-btn" id="pdf-zoom-fit">⊡</button>
+    </div>
+  </div>
+
+  <!-- Canvas container -->
+  <div class="pdf-canvas-wrap" id="pdf-canvas-wrap">
+    <div class="pdf-loading" id="pdf-loading">
+      <div class="pdf-loading-ring"></div>
+      <div style="margin-top:12px;font-size:14px;color:var(--dim)">Loading PDF…</div>
+    </div>
+    <canvas id="pdf-canvas"></canvas>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════
 // QUOTES
@@ -901,7 +1048,84 @@ try{
     });
   }
 }catch(e){}
-window.addEventListener('beforeunload',saveData);
+// ══════════════════════════════════════════
+// QUIT GUARD — intercept back/close during focus
+// ══════════════════════════════════════════
+const QUIT_QUOTES=[
+  {q:"The man who moves a mountain begins by carrying away small stones.",a:"Confucius"},
+  {q:"It does not matter how slowly you go as long as you do not stop.",a:"Confucius"},
+  {q:"Energy and persistence conquer all things.",a:"Benjamin Franklin"},
+  {q:"Success is not final, failure is not fatal: it is the courage to continue that counts.",a:"Winston Churchill"},
+  {q:"The secret of getting ahead is getting started. Don't stop now.",a:"Mark Twain"},
+  {q:"Quitting is the easiest thing to do. That's why most people do it.",a:""},
+  {q:"The pain of discipline is far less than the pain of regret.",a:""},
+  {q:"Champions keep playing until they get it right.",a:"Billie Jean King"},
+  {q:"You didn't come this far to only come this far.",a:""},
+  {q:"Your future self is watching you right now through your memories.",a:""},
+  {q:"One hour of focus now is worth a week of guilt later.",a:""},
+  {q:"The moment you want to quit is exactly one second before the miracle happens.",a:""},
+];
+
+let quitGuardActive=false,quitGuardTimer=null,quitGuardCount=0;
+let _pendingLeaveCallback=null; // called if user insists on leaving
+
+function randomQuitQuote(){
+  const q=QUIT_QUOTES[Math.floor(Math.random()*QUIT_QUOTES.length)];
+  document.getElementById('qg-quote').innerHTML=
+    `"${q.q}"${q.a?`<span class="qg-quote-attr">— ${q.a}</span>`:''}`;
+}
+
+function showQuitGuard(onLeave){
+  if(quitGuardActive) return;
+  if(!timerRunning||runningTimerMode!=='focus'){ if(onLeave) onLeave(); return; }
+  quitGuardActive=true;
+  _pendingLeaveCallback=onLeave||null;
+  randomQuitQuote();
+  const el=document.getElementById('quit-guard');
+  el.classList.add('show');
+  quitGuardCount=20;
+  document.getElementById('qg-countdown').innerText=quitGuardCount;
+  document.getElementById('qg-bar-fill').style.width='100%';
+  quitGuardTimer=setInterval(()=>{
+    quitGuardCount--;
+    document.getElementById('qg-countdown').innerText=quitGuardCount;
+    document.getElementById('qg-bar-fill').style.width=`${(quitGuardCount/20)*100}%`;
+    const subEl=document.getElementById('qg-countdown-sub');
+    if(subEl) subEl.innerText=quitGuardCount;
+    if(quitGuardCount<=0){
+      clearInterval(quitGuardTimer);
+      const cb=_pendingLeaveCallback; // save before dismiss clears it
+      dismissQuitGuard();
+      if(cb) cb(); // time's up — execute the navigation
+    }
+  },1000);
+
+  document.getElementById('qg-stay').onclick=()=>{
+    clearInterval(quitGuardTimer);
+    dismissQuitGuard();
+    // Stay — do nothing
+  };
+  document.getElementById('qg-leave').onclick=()=>{
+    clearInterval(quitGuardTimer);
+    const cb=_pendingLeaveCallback; // save BEFORE dismiss nulls it
+    dismissQuitGuard();
+    if(cb) cb(); // now execute the navigation
+  };
+}
+function dismissQuitGuard(){
+  quitGuardActive=false;
+  _pendingLeaveCallback=null;
+  document.getElementById('quit-guard').classList.remove('show');
+}
+
+// Intercept PDF back button during focus
+window.addEventListener('beforeunload',e=>{
+  saveData();
+  if(timerRunning&&runningTimerMode==='focus'){
+    const msg='You have a focus session running. Are you sure you want to leave?';
+    e.preventDefault();e.returnValue=msg;return msg;
+  }
+});
 function saveData(){try{localStorage.setItem('focusAppData',JSON.stringify(appData));}catch(e){}}
 function cleanOld(){if(!appData.tasks)appData.tasks=[];appData.tasks=appData.tasks.filter(t=>(Date.now()-t.timestamp)<ONE_WEEK);saveData();}
 function today(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
@@ -1265,7 +1489,7 @@ function masterTick(){
     if(totalSeconds>0){
       totalSeconds--;
       if(runningTimerMode==='focus')recordFocusTick();
-      updateDisplays();updateYtTimerBar();updateBreakOverlay();
+      updateDisplays();updateYtTimerBar();updateBreakOverlay();updatePdfTimer();
     }else{
       onSegmentEnd();
     }
@@ -1461,9 +1685,15 @@ function onSegmentEnd(){
       videoWatchTick=false;
       pauseYtVideo();
       showBreakOverlay(seg.secs);
+      // PDF page break overlay
+      const pbo=document.getElementById('pdf-break-overlay');
+      pbo.classList.add('show');
+      document.getElementById('pdf-bo-time').innerText=fmt(seg.secs);
     }else{
       resumeYtVideo();
       videoWatchTick=true;
+      // Hide PDF break overlay when focus resumes
+      document.getElementById('pdf-break-overlay').classList.remove('show');
     }
     timerRunning=true;
     if(runningTimerMode==='focus')recordFocusTick();
@@ -1475,7 +1705,10 @@ function onSegmentEnd(){
 
 // ── Break overlay ──
 function showBreakOverlay(secs){document.getElementById('break-overlay').classList.add('show');document.getElementById('bo-time').innerText=fmt(secs);}
-function hideBreakOverlay(){document.getElementById('break-overlay').classList.remove('show');}
+function hideBreakOverlay(){
+  document.getElementById('break-overlay').classList.remove('show');
+  document.getElementById('pdf-break-overlay').classList.remove('show');
+}
 function updateBreakOverlay(){if(document.getElementById('break-overlay').classList.contains('show'))document.getElementById('bo-time').innerText=fmt(totalSeconds);}
 document.getElementById('bo-skip').onclick=()=>{totalSeconds=0;};
 
@@ -1707,7 +1940,10 @@ document.getElementById('btn-clear').onclick=endAll;
 
 // Expand
 document.getElementById('btn-expand').onclick=()=>{randomQuote();updateFsTheme();buildCycleDots();fsOverlay.classList.add('active');document.body.style.overflow='hidden';};
-document.getElementById('fs-back-btn').onclick=closeFullscreen;
+document.getElementById('fs-back-btn').onclick=()=>{
+  // FS back just collapses overlay — doesn't end timer, no guard needed
+  closeFullscreen();
+};
 
 // ── PiP ──
 function drawPip(){
@@ -1797,17 +2033,7 @@ function setViewMode(mode){
   }
 }
 
-function showPage(name){
-  if(name==='main'){
-    setViewMode('default');
-    hideFloatingTimer(); // hide floating timer when leaving YT page
-  }
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById(name==='main'?'main-page':'yt-page').classList.add('active');
-  syncThemeBtns();
-  // Show floating timer immediately when entering YT page
-  if(name==='yt'&&timerRunning) updateYtTimerBar();
-}
+// showPage is defined later in PDF section with full page support
 
 // Video fullscreen — we own the fullscreen (allowfullscreen removed from iframe)
 // So document.fullscreenElement === videoWrapEl when fullscreen is active
@@ -1906,13 +2132,180 @@ function mobileNav(tab){
 
 // Keep mobile nav in sync when page loads
 document.addEventListener('DOMContentLoaded',()=>{
-  // On YT page, hide mobile nav
   const obs=new MutationObserver(()=>{
     const onYt=document.getElementById('yt-page').classList.contains('active');
-    document.getElementById('mobile-nav').style.display=onYt?'none':'';
+    const onPdf=document.getElementById('pdf-page').classList.contains('active');
+    document.getElementById('mobile-nav').style.display=(onYt||onPdf)?'none':'';
   });
   obs.observe(document.getElementById('yt-page'),{attributes:true,attributeFilter:['class']});
+  obs.observe(document.getElementById('pdf-page'),{attributes:true,attributeFilter:['class']});
 });
+
+// ══════════════════════════════════════════
+// PDF READER
+// ══════════════════════════════════════════
+let pdfDoc=null,pdfPage=1,pdfScale=1.4,pdfRendering=false,pdfPendingPage=null;
+const PDF_JS_URL='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs';
+const PDF_WORKER_URL='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs';
+let pdfjsLib=null;
+
+async function loadPdfJs(){
+  if(pdfjsLib)return pdfjsLib;
+  const mod=await import(PDF_JS_URL);
+  pdfjsLib=mod;
+  pdfjsLib.GlobalWorkerOptions.workerSrc=PDF_WORKER_URL;
+  return pdfjsLib;
+}
+
+async function openPdfFile(file){
+  if(!file||file.type!=='application/pdf'){alert('Please select a valid PDF file.');return;}
+  document.getElementById('pdf-loading').style.display='flex';
+  document.getElementById('pdf-canvas').style.display='none';
+  showPage('pdf');
+  closeFullscreen();
+
+  try{
+    const lib=await loadPdfJs();
+    const ab=await file.arrayBuffer();
+    pdfDoc=await lib.getDocument({data:ab}).promise;
+    pdfPage=1;
+    document.getElementById('pdf-title').innerText=file.name.replace(/\.pdf$/i,'');
+    document.getElementById('pdf-total-pages').innerText=pdfDoc.numPages;
+    autoFitScale();
+    await renderPdfPage(pdfPage);
+  }catch(e){
+    alert('Could not read PDF: '+e.message);
+    showPage('main');
+  }
+}
+
+function autoFitScale(){
+  const wrap=document.getElementById('pdf-canvas-wrap');
+  const availW=wrap.clientWidth-32;
+  // Estimate: A4 is ~595pt wide at 1x scale (72dpi=1pt)
+  pdfScale=Math.min(1.8,Math.max(0.6,availW/612));
+}
+
+async function renderPdfPage(num){
+  if(!pdfDoc)return;
+  if(pdfRendering){pdfPendingPage=num;return;}
+  pdfRendering=true;
+  document.getElementById('pdf-cur-page').innerText=num;
+  const page=await pdfDoc.getPage(num);
+  const vp=page.getViewport({scale:pdfScale});
+  const canvas=document.getElementById('pdf-canvas');
+  const ctx2=canvas.getContext('2d');
+  canvas.width=vp.width;canvas.height=vp.height;
+  await page.render({canvasContext:ctx2,viewport:vp}).promise;
+  pdfRendering=false;
+  document.getElementById('pdf-loading').style.display='none';
+  canvas.style.display='block';
+  // Scroll to top on page change
+  document.getElementById('pdf-canvas-wrap').scrollTop=0;
+  if(pdfPendingPage){const p=pdfPendingPage;pdfPendingPage=null;await renderPdfPage(p);}
+}
+
+function pdfGoPage(delta){
+  if(!pdfDoc)return;
+  const next=pdfPage+delta;
+  if(next<1||next>pdfDoc.numPages)return;
+  pdfPage=next;
+  renderPdfPage(pdfPage);
+}
+
+document.getElementById('pdf-prev-page').onclick=()=>pdfGoPage(-1);
+document.getElementById('pdf-next-page').onclick=()=>pdfGoPage(1);
+document.getElementById('pdf-zoom-in').onclick=()=>{pdfScale=Math.min(3,pdfScale+0.2);renderPdfPage(pdfPage);};
+document.getElementById('pdf-zoom-out').onclick=()=>{pdfScale=Math.max(0.4,pdfScale-0.2);renderPdfPage(pdfPage);};
+document.getElementById('pdf-zoom-fit').onclick=()=>{autoFitScale();renderPdfPage(pdfPage);};
+document.getElementById('pdf-back-btn').onclick=()=>{
+  showQuitGuard(()=>{showPage('main');closeFullscreen();});
+};
+
+// Keyboard navigation for PDF
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('pdf-page').classList.contains('active'))return;
+  if(e.key==='ArrowRight'||e.key==='ArrowDown') pdfGoPage(1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') pdfGoPage(-1);
+});
+
+// Swipe support for PDF on mobile
+(function(){
+  let tx=0,ty=0;
+  const wrap=document.getElementById('pdf-canvas-wrap');
+  wrap.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+  wrap.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-tx;
+    const dy=e.changedTouches[0].clientY-ty;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>50){
+      pdfGoPage(dx<0?1:-1);
+    }
+  },{passive:true});
+})();
+
+// Wire PDF file input in FS overlay
+document.getElementById('fs-pdf-input').onchange=e=>{
+  const f=e.target.files[0];
+  if(f) openPdfFile(f);
+  e.target.value='';
+};
+
+// PDF break overlay skip
+document.getElementById('pdf-bo-skip').onclick=()=>{totalSeconds=0;};
+
+// Update PDF floating timer from masterTick
+function updatePdfTimer(){
+  const onPdf=document.getElementById('pdf-page').classList.contains('active');
+  if(!onPdf||!timerRunning)return;
+  const ts=fmt(totalSeconds);
+  const isBreak=runningTimerMode==='break';
+  document.getElementById('pft-time').innerText=ts;
+  const modeEl=document.getElementById('pft-mode');
+  modeEl.innerText=runningTimerMode.toUpperCase();
+  modeEl.className='ft-mode'+(isBreak?' bk':'');
+  // Show/hide PDF break overlay
+  const pbo=document.getElementById('pdf-break-overlay');
+  if(isBreak&&!pbo.classList.contains('show'))pbo.classList.add('show');
+  if(!isBreak&&pbo.classList.contains('show'))pbo.classList.remove('show');
+  // Update break time display
+  if(isBreak) document.getElementById('pdf-bo-time').innerText=ts;
+}
+
+// Hook showPage to handle PDF page
+const _baseshowPage=showPage;
+function showPage(name){
+  // If navigating away from a study page during focus — show quit guard
+  if(name==='main'){
+    const onStudy=document.getElementById('yt-page').classList.contains('active')||
+                  document.getElementById('pdf-page').classList.contains('active');
+    if(timerRunning&&runningTimerMode==='focus'&&onStudy){
+      showQuitGuard(()=>_doShowPage('main'));
+      return;
+    }
+  }
+  _doShowPage(name);
+}
+function _doShowPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  if(name==='pdf'){
+    document.getElementById('pdf-page').classList.add('active');
+  } else if(name==='yt'){
+    document.getElementById('yt-page').classList.add('active');
+  } else {
+    document.getElementById('main-page').classList.add('active');
+    // Reset view mode and nav when going back to main
+    setViewMode('default');
+    document.getElementById('mobile-nav').style.display='';
+  }
+  syncThemeBtns();
+  const onYt=name==='yt',onPdf=name==='pdf';
+  if(!onYt&&!onPdf) hideFloatingTimer();
+  if(onYt&&timerRunning) updateYtTimerBar();
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
 lastKnownDate=today();cleanOld();renderTasks();renderHistory();checkStreak();updateBackup();renderNotes();renderNotebook();updateVideoWatchUI();
 startMasterInterval();
 </script>
