@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FocusFlow</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0f;--glass:rgba(255,255,255,0.04);--glass-b:rgba(255,255,255,0.08);
+  --text:#e8e8f0;--dim:#8888aa;--faint:#4a4a66;
+  --a:#7c6bff;--a2:#ff6b9d;--a3:#6bffb8;--a4:#ffb86b;
+  --red:#ff5757;--yellow:#ffd96b;
+  --r:20px;--rs:12px;--sh:0 8px 40px rgba(0,0,0,0.5);
+}
+body.lm{
+  --bg:#f0f0f8;--glass:rgba(255,255,255,0.75);--glass-b:rgba(100,100,160,0.15);
+  --text:#1a1a2e;--dim:#5a5a7a;--faint:#aaaacc;--sh:0 8px 40px rgba(0,0,0,0.1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .4s,color .4s;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 80% 50% at 20% 10%,rgba(124,107,255,.08) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 40% at 80% 80%,rgba(107,255,184,.05) 0%,transparent 50%),
+  radial-gradient(ellipse 50% 60% at 60% 30%,rgba(255,107,157,.04) 0%,transparent 50%);
+  pointer-events:none;z-index:0}
+
+/* ── LAYOUT ── */
+.app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:24px 16px 40px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.5px;
+  background:linear-gradient(135deg,var(--a),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo-sub{font-size:11px;color:var(--faint);margin-top:1px;letter-spacing:.04em}
+.theme-btn{display:flex;align-items:center;gap:7px;background:var(--glass);border:1px solid var(--glass-b);
+  color:var(--dim);padding:8px 16px;border-radius:50px;cursor:pointer;font-size:13px;font-family:'DM Sans',sans-serif;
+  font-weight:500;transition:all .2s;backdrop-filter:blur(10px)}
+.theme-btn:hover{border-color:var(--a);color:var(--text)}
+
+.card{background:var(--glass);border:1px solid var(--glass-b);border-radius:var(--r);padding:22px;
+  box-shadow:var(--sh);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  transition:background .3s,border-color .3s;animation:fadeUp .4s ease both}
+.card:hover{border-color:rgba(124,107,255,.18)}
+.card-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';width:3px;height:12px;border-radius:2px;
+  background:linear-gradient(to bottom,var(--a),var(--a2));flex-shrink:0}
+
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+@media(max-width:560px){.stats-grid{grid-template-columns:1fr}}
+.stat-card{background:var(--glass);border:1px solid var(--glass-b);border-radius:var(--r);padding:18px 20px;
+  backdrop-filter:blur(20px);transition:all .25s;animation:fadeUp .4s ease both}
+.stat-card:nth-child(2){animation-delay:.06s}
+.stat-card:hover{transform:translateY(-2px);border-color:rgba(124,107,255,.22)}
+.stat-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.stat-val{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;letter-spacing:-1.5px;line-height:1}
+.sv-goal{color:var(--a);cursor:pointer;transition:opacity .2s}.sv-goal:hover{opacity:.7}
+.sv-streak{color:var(--a4)}
+.bar-bg{height:6px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:12px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--a),var(--a2));
+  transition:width .6s cubic-bezier(.4,0,.2,1);box-shadow:0 0 10px rgba(124,107,255,.35)}
+.bar-fill.ok{background:linear-gradient(90deg,#00c97a,var(--a3));box-shadow:0 0 10px rgba(107,255,184,.35)}
+.bar-sub{font-size:12px;color:var(--dim);margin-top:8px;font-weight:500}
+
+.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:820px){.main-grid{grid-template-columns:1fr}}
+.main-grid>.card:nth-child(1){animation-delay:.04s}
+.main-grid>.card:nth-child(2){animation-delay:.09s}
+.main-grid>.card:nth-child(3){animation-delay:.14s}
+.main-grid>.card:nth-child(4){animation-delay:.18s}
+
+/* ── FORMS ── */
+input[type=text],input[type=number],select{
+  background:rgba(255,255,255,.04);border:1px solid var(--glass-b);border-radius:10px;
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 13px;
+  outline:none;transition:all .2s;width:100%;-webkit-appearance:none}
+input:focus,select:focus{border-color:var(--a);background:rgba(124,107,255,.07);box-shadow:0 0 0 3px rgba(124,107,255,.1)}
+input::placeholder{color:var(--faint)}
+select{cursor:pointer}
+select option{background:#1a1a2e;color:#e8e8f0}
+body.lm select option{background:#fff;color:#1a1a2e}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:10px 16px;
+  border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .2s;white-space:nowrap}
+.bp{background:linear-gradient(135deg,var(--a),#9b8fff);color:#fff;box-shadow:0 4px 18px rgba(124,107,255,.3)}
+.bp:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(124,107,255,.42)}
+.bg{background:linear-gradient(135deg,#00c97a,var(--a3));color:#0a0a18;box-shadow:0 4px 16px rgba(107,255,184,.2)}
+.bg:hover{transform:translateY(-1px)}
+.br{background:rgba(255,87,87,.12);color:var(--red);border:1px solid rgba(255,87,87,.2)}
+.br:hover{background:rgba(255,87,87,.22)}
+.bgr{background:rgba(255,255,255,.05);color:var(--dim);border:1px solid var(--glass-b)}
+.bgr:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.bt{background:rgba(107,255,184,.1);color:var(--a3);border:1px solid rgba(107,255,184,.18)}
+.bt:hover{background:rgba(107,255,184,.18)}
+.bpu{background:rgba(124,107,255,.1);color:var(--a);border:1px solid rgba(124,107,255,.18)}
+.bpu:hover{background:rgba(124,107,255,.2)}
+.bw{width:100%}
+.bsm{padding:7px 11px;font-size:12px;border-radius:8px}
+
+/* ── TASKS ── */
+.task-row{display:grid;grid-template-columns:1fr 72px auto;gap:8px;margin-bottom:14px}
+@media(max-width:440px){.task-row{grid-template-columns:1fr 64px}.task-row .btn{grid-column:1/-1}}
+.task-list{list-style:none;display:flex;flex-direction:column;gap:5px}
+.ti{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;
+  background:rgba(255,255,255,.02);border:1px solid transparent;transition:all .2s}
+.ti:hover{background:rgba(255,255,255,.04);border-color:var(--glass-b)}
+.ti.done{opacity:.4}.ti.done .tt{text-decoration:line-through}
+.chk{width:20px;height:20px;border-radius:50%;border:2px solid var(--faint);cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;transition:all .2s}
+.ti.done .chk{background:var(--a);border-color:var(--a);color:#fff}
+.chk:hover{border-color:var(--a)}
+.tb{flex:1;min-width:0}.tt{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm{font-size:11px;color:var(--faint);margin-top:2px}
+.tbar{height:3px;background:rgba(255,255,255,.05);border-radius:2px;margin-top:5px;overflow:hidden}
+.tbar-f{height:100%;border-radius:2px;transition:width .4s,background .4s}
+.empty{text-align:center;color:var(--faint);font-size:13px;padding:28px 0}
+
+/* ── TIMER CARD (mini, in grid) ── */
+.timer-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.nav-arr{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;
+  background:rgba(255,255,255,.04);border:1px solid var(--glass-b);cursor:pointer;color:var(--dim);
+  font-size:18px;transition:all .2s;user-select:none}
+.nav-arr:hover{background:rgba(124,107,255,.12);border-color:var(--a);color:var(--a)}
+.timer-lbl{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.sel-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.time-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.time-row input{width:68px;text-align:center;font-family:'DM Mono',monospace;font-size:20px;padding:9px 6px}
+.tsep{font-family:'DM Mono',monospace;font-size:22px;color:var(--faint)}
+.thint{font-size:11px;color:var(--faint);margin-left:4px}
+
+/* CYCLE SETUP SECTION */
+.cycle-toggle{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:12px 14px;
+  background:rgba(255,255,255,.02);border:1px solid var(--glass-b);border-radius:10px;cursor:pointer;transition:all .2s}
+.cycle-toggle:hover{background:rgba(124,107,255,.06);border-color:rgba(124,107,255,.2)}
+.toggle-switch{width:36px;height:20px;background:rgba(255,255,255,.1);border-radius:10px;position:relative;flex-shrink:0;transition:background .3s}
+.toggle-switch.on{background:var(--a)}
+.toggle-knob{position:absolute;top:3px;left:3px;width:14px;height:14px;background:#fff;border-radius:50%;transition:left .25s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.toggle-switch.on .toggle-knob{left:19px}
+.toggle-lbl{font-size:13px;font-weight:600;color:var(--text)}
+.toggle-sub{font-size:11px;color:var(--faint);margin-top:1px}
+
+.cycle-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;animation:fadeUp .3s ease}
+.cycle-opts label{font-size:11px;color:var(--faint);display:block;margin-bottom:4px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.cycle-opts input{font-size:14px}
+
+/* Small ring in card */
+.ring-wrap-sm{position:relative;width:120px;height:120px;margin:0 auto 12px}
+.ring-wrap-sm svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:rgba(255,255,255,.05);stroke-width:5}
+.ring-fg{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.td-sm{font-family:'DM Mono',monospace;font-size:26px;font-weight:500;letter-spacing:-1px;line-height:1}
+.td-sm.fm{background:linear-gradient(135deg,var(--text),var(--a));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.td-sm.bm{background:linear-gradient(135deg,var(--text),var(--a3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.pause-txt-sm{font-size:10px;color:var(--red);font-weight:600;margin-top:3px;font-family:'DM Mono',monospace}
+.timer-btns{display:flex;gap:7px;flex-wrap:wrap}
+.timer-btns .btn{flex:1;min-width:68px}
+
+/* ── FULLSCREEN TIMER OVERLAY ── */
+#fs-overlay{
+  position:fixed;inset:0;z-index:9999;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background:var(--bg);
+  transition:opacity .4s;
+  overflow:hidden;
+}
+#fs-overlay.active{display:flex}
+#fs-overlay::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 70% 70% at 50% 40%,rgba(124,107,255,.1) 0%,transparent 65%);
+  pointer-events:none}
+#fs-overlay.break-bg::before{
+  background:radial-gradient(ellipse 70% 70% at 50% 40%,rgba(107,255,184,.08) 0%,transparent 65%)}
+
+/* Quote */
+.fs-quote{
+  font-family:'DM Sans',sans-serif;font-style:italic;font-size:15px;
+  color:var(--faint);text-align:center;max-width:480px;line-height:1.7;
+  padding:0 20px;margin-bottom:40px;
+  animation:fadeUp .6s ease both .1s;
+}
+.fs-quote-attr{display:block;font-style:normal;font-size:12px;font-weight:600;
+  color:var(--faint);margin-top:6px;letter-spacing:.06em;text-transform:uppercase;opacity:.7}
+
+/* Mode badge */
+.fs-mode-badge{
+  font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--faint);margin-bottom:18px;
+  display:flex;align-items:center;gap:8px;
+}
+.fs-mode-dot{width:6px;height:6px;border-radius:50%;background:var(--a);animation:pulse 2s infinite}
+.fs-mode-badge.break-badge .fs-mode-dot{background:var(--a3)}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+/* Cycle progress dots */
+.fs-cycles{display:flex;gap:8px;margin-bottom:28px;flex-wrap:wrap;justify-content:center}
+.cy-dot{width:28px;height:8px;border-radius:4px;background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.1);transition:all .4s}
+.cy-dot.focus-done{background:var(--a);border-color:var(--a);box-shadow:0 0 8px rgba(124,107,255,.4)}
+.cy-dot.break-done{background:var(--a3);border-color:var(--a3);box-shadow:0 0 8px rgba(107,255,184,.3)}
+.cy-dot.active{background:rgba(124,107,255,.3);border-color:var(--a);animation:dotPulse 1.5s infinite}
+.cy-dot.active.is-break{background:rgba(107,255,184,.2);border-color:var(--a3);animation:dotPulseGreen 1.5s infinite}
+@keyframes dotPulse{0%,100%{box-shadow:0 0 4px rgba(124,107,255,.3)}50%{box-shadow:0 0 12px rgba(124,107,255,.7)}}
+@keyframes dotPulseGreen{0%,100%{box-shadow:0 0 4px rgba(107,255,184,.2)}50%{box-shadow:0 0 12px rgba(107,255,184,.6)}}
+
+/* Big ring */
+.fs-ring-wrap{position:relative;width:280px;height:280px;margin:0 auto 28px}
+@media(max-width:480px){.fs-ring-wrap{width:220px;height:220px}}
+.fs-ring-wrap svg{transform:rotate(-90deg)}
+.fs-ring-bg{fill:none;stroke:rgba(255,255,255,.05);stroke-width:6}
+.fs-ring-fg{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.fs-ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.fs-timer-disp{
+  font-family:'DM Mono',monospace;font-size:80px;font-weight:300;
+  letter-spacing:-4px;line-height:1;
+}
+@media(max-width:480px){.fs-timer-disp{font-size:60px}}
+.fs-timer-disp.fm{background:linear-gradient(135deg,var(--text) 0%,var(--a) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.fs-timer-disp.bm{background:linear-gradient(135deg,var(--text) 0%,var(--a3) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.fs-pause-info{font-family:'DM Mono',monospace;font-size:14px;color:var(--red);font-weight:600;margin-top:8px;letter-spacing:.04em}
+
+/* FS buttons */
+.fs-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:20px}
+.fs-btns .btn{min-width:100px;padding:12px 20px;font-size:14px}
+.fs-back{position:absolute;top:20px;left:20px;cursor:pointer;display:flex;align-items:center;gap:6px;
+  font-size:13px;font-weight:600;color:var(--faint);background:rgba(255,255,255,.04);
+  border:1px solid var(--glass-b);border-radius:50px;padding:8px 14px;transition:all .2s}
+.fs-back:hover{color:var(--text);border-color:var(--a);background:rgba(124,107,255,.1)}
+.fs-pip{position:absolute;top:20px;right:20px}
+
+/* ── CHART ── */
+.chart-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+canvas#trend-chart{max-height:200px}
+
+/* ── HISTORY ── */
+.hist-list{display:flex;flex-direction:column;gap:10px;max-height:320px;overflow-y:auto;padding-right:2px}
+.hd{padding:13px 14px;background:rgba(255,255,255,.02);border:1px solid var(--glass-b);border-radius:12px;transition:all .2s}
+.hd:hover{background:rgba(255,255,255,.04)}
+.hdate{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text);margin-bottom:9px}
+.hstats{display:flex;gap:14px;flex-wrap:wrap}
+.hs{font-size:12px}
+.hs-l{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+.hs-v{font-family:'DM Mono',monospace;font-size:13px;font-weight:500}
+.cf{color:var(--a)}.ca{color:var(--a2)}.chi{color:var(--a3)}.cm{color:var(--yellow)}.clo{color:var(--red)}
+.hsess{margin-top:9px;padding-left:10px;border-left:2px solid rgba(124,107,255,.18);display:flex;flex-direction:column;gap:3px}
+.hses{font-size:11px;color:var(--dim)}
+.tpill{display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;
+  background:rgba(124,107,255,.14);color:var(--a);margin-left:4px;text-transform:uppercase;letter-spacing:.04em}
+.data-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+@media(max-width:440px){.data-btns{grid-template-columns:1fr}}
+.bkn{font-size:11px;color:var(--dim);margin-top:9px;text-align:center;line-height:1.6}
+.bkw{color:var(--red);font-weight:600}
+.reset-btn{width:100%;padding:9px;margin-top:10px;border-radius:10px;font-size:11px;
+  font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;
+  border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02);color:var(--faint);transition:all .3s}
+.reset-btn.danger{background:rgba(255,87,87,.1);color:var(--red);border-color:rgba(255,87,87,.22)}
+.reset-btn.ready{background:rgba(107,255,184,.1);color:var(--a3);border-color:rgba(107,255,184,.25)}
+
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:3px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+#pip-canvas,#pip-video,#import-file{display:none}
+</style>
+</head>
+<body>
+<canvas id="pip-canvas" width="400" height="200"></canvas>
+<video id="pip-video" autoplay muted playsinline></video>
+<svg width="0" height="0" style="position:absolute;pointer-events:none">
+  <defs>
+    <linearGradient id="gF" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c6bff"/><stop offset="100%" stop-color="#ff6b9d"/>
+    </linearGradient>
+    <linearGradient id="gB" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6bffb8"/><stop offset="100%" stop-color="#00c97a"/>
+    </linearGradient>
+  </defs>
+</svg>
+<input type="file" id="import-file" accept=".json">
+
+<!-- ══════════════════════════════════════════ FULLSCREEN OVERLAY ══════════════════════════════════════════ -->
+<div id="fs-overlay">
+  <div class="fs-back" id="fs-back-btn">← Back</div>
+
+  <button class="btn bt bsm fs-pip" id="fs-pip-btn">⧉ PiP</button>
+
+  <div class="fs-quote" id="fs-quote">
+    "The secret of getting ahead is getting started."
+    <span class="fs-quote-attr">— Mark Twain</span>
+  </div>
+
+  <div class="fs-mode-badge" id="fs-mode-badge">
+    <span class="fs-mode-dot"></span>
+    <span id="fs-mode-txt">Focus</span>
+  </div>
+
+  <div class="fs-cycles" id="fs-cycles"></div>
+
+  <div class="fs-ring-wrap">
+    <svg id="fs-svg" viewBox="0 0 280 280" width="280" height="280">
+      <circle class="fs-ring-bg" cx="140" cy="140" r="128"/>
+      <circle id="fs-ring" class="fs-ring-fg" cx="140" cy="140" r="128"
+        stroke="url(#gF)" stroke-dasharray="804.2" stroke-dashoffset="0"/>
+    </svg>
+    <div class="fs-ring-inner">
+      <div class="fs-timer-disp fm" id="fs-disp">25:00</div>
+      <div class="fs-pause-info" id="fs-pause-info" style="display:none">PAUSED</div>
+    </div>
+  </div>
+
+  <div class="fs-btns">
+    <button class="btn bgr" id="fs-pause">⏸ Pause</button>
+    <button class="btn bg" id="fs-resume" style="display:none">▶ Resume</button>
+    <button class="btn br" id="fs-stop">■ Stop</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ MAIN APP ══════════════════════════════════════════ -->
+<div class="app" id="main-app">
+  <div class="topbar">
+    <div><div class="logo">FocusFlow</div><div class="logo-sub">Track · Focus · Achieve</div></div>
+    <button id="theme-toggle" class="theme-btn">🌙 Dark</button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-lbl">Daily Target</div>
+      <div class="stat-val sv-goal" id="goal-text" title="Click to edit">6h Focus</div>
+      <div class="bar-bg"><div id="goal-bar" class="bar-fill" style="width:0%"></div></div>
+      <div class="bar-sub" id="goal-sub">Calculating…</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Streak</div>
+      <div class="stat-val sv-streak" id="streak-text">🔥 0 Days</div>
+      <div class="bar-sub" id="streak-sub" style="margin-top:14px">Start your streak today!</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- TODO -->
+    <div class="card">
+      <div class="card-title">To-Do List</div>
+      <div class="task-row">
+        <input type="text" id="new-task" placeholder="What needs to be done?">
+        <input type="number" id="new-task-time" placeholder="min" min="1">
+        <button id="add-btn" class="btn bp">+ Add</button>
+      </div>
+      <ul class="task-list" id="task-list"><li class="empty">No tasks yet</li></ul>
+    </div>
+
+    <!-- TIMER CARD -->
+    <div class="card">
+      <div class="timer-nav">
+        <div class="nav-arr" id="prev-timer">&#8249;</div>
+        <div class="timer-lbl" id="timer-title">Focus Timer</div>
+        <div class="nav-arr" id="next-timer">&#8250;</div>
+      </div>
+
+      <div id="timer-setup">
+        <div class="sel-row" id="dropdown-container">
+          <select id="task-select"><option value="">General Focus</option></select>
+          <select id="tag-select">
+            <option value="" disabled selected>Tag *</option>
+            <option value="Study">📚 Study</option>
+            <option value="Class">🏫 Class</option>
+            <option value="Browsing">🌐 Browsing</option>
+            <option value="Note">📝 Note</option>
+          </select>
+        </div>
+
+        <div class="time-row">
+          <input type="number" id="input-min" value="25" min="0">
+          <span class="tsep">:</span>
+          <input type="number" id="input-sec" value="0" min="0" max="59">
+          <span class="thint">min : sec</span>
+        </div>
+
+        <!-- CYCLE TOGGLE -->
+        <div class="cycle-toggle" id="cycle-toggle-row" onclick="toggleCycleMode()">
+          <div class="toggle-switch" id="cycle-switch"><div class="toggle-knob"></div></div>
+          <div>
+            <div class="toggle-lbl">Continuous Cycle Mode</div>
+            <div class="toggle-sub">Focus → Break → repeat</div>
+          </div>
+        </div>
+
+        <div class="cycle-opts" id="cycle-opts" style="display:none">
+          <div>
+            <label>Break (min)</label>
+            <input type="number" id="break-min" value="5" min="1">
+          </div>
+          <div>
+            <label>Cycles</label>
+            <input type="number" id="cycle-count" value="4" min="1" max="20">
+          </div>
+          <div>
+            <label>Long break</label>
+            <input type="number" id="long-break-min" value="15" min="1">
+          </div>
+        </div>
+
+        <button id="start-btn" class="btn bp bw" style="margin-top:4px">▶ Start Timer</button>
+      </div>
+
+      <!-- mini running view (just shows in card, minimal) -->
+      <div id="timer-running" style="display:none">
+        <div class="ring-wrap-sm">
+          <svg viewBox="0 0 120 120" width="120" height="120">
+            <circle class="ring-bg" cx="60" cy="60" r="52"/>
+            <circle id="mini-ring" class="ring-fg" cx="60" cy="60" r="52"
+              stroke="url(#gF)" stroke-dasharray="326.7" stroke-dashoffset="0"/>
+          </svg>
+          <div class="ring-inner">
+            <div class="td-sm fm" id="mini-disp">25:00</div>
+            <div class="pause-txt-sm" id="mini-pause" style="display:none">PAUSED</div>
+          </div>
+        </div>
+        <div class="timer-btns">
+          <button class="btn bgr bsm" id="btn-expand">⤢ Expand</button>
+          <button class="btn bgr bsm" id="btn-pause">⏸</button>
+          <button class="btn bg bsm" id="btn-resume" style="display:none">▶</button>
+          <button class="btn br bsm" id="btn-clear">■</button>
+          <button class="btn bt bsm" id="btn-pip">PiP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="card">
+      <div class="chart-nav">
+        <div class="nav-arr" id="prev-graph">&#8249;</div>
+        <div class="card-title" style="margin:0" id="graph-title">7-Day Trend</div>
+        <div class="nav-arr" id="next-graph">&#8250;</div>
+      </div>
+      <canvas id="trend-chart"></canvas>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="card">
+      <div class="card-title">Activity History</div>
+      <div class="hist-list" id="history-container"><div class="empty">No history yet</div></div>
+      <div class="data-btns">
+        <button id="export-btn" class="btn bt">↑ Export</button>
+        <button id="import-btn" class="btn bpu">↓ Import</button>
+      </div>
+      <div id="backup-status" class="bkn"></div>
+      <button class="reset-btn" id="full-reset-btn">Clear All Data Permanently</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════ QUOTES ══════
+const QUOTES=[
+  {q:"The secret of getting ahead is getting started.",a:"Mark Twain"},
+  {q:"It always seems impossible until it's done.",a:"Nelson Mandela"},
+  {q:"Focus on being productive instead of busy.",a:"Tim Ferriss"},
+  {q:"You don't have to be great to start, but you have to start to be great.",a:"Zig Ziglar"},
+  {q:"Absorb what is useful, discard what is useless, add what is specifically your own.",a:"Bruce Lee"},
+  {q:"The way to get started is to quit talking and begin doing.",a:"Walt Disney"},
+  {q:"Either you run the day, or the day runs you.",a:"Jim Rohn"},
+  {q:"Do something today that your future self will thank you for.",a:"Sean Patrick Flanery"},
+  {q:"Success is the sum of small efforts repeated day in and day out.",a:"Robert Collier"},
+  {q:"Your future is created by what you do today, not tomorrow.",a:"Robert Kiyosaki"},
+  {q:"One hour of focused work is worth ten of scattered effort.",a:""},
+  {q:"Deep work is the superpower of the 21st century.",a:"Cal Newport"},
+  {q:"The present moment always will have been.",a:""},
+  {q:"Small steps every day lead to big results over time.",a:""},
+  {q:"Distraction is the enemy of depth.",a:""},
+];
+function randomQuote(){
+  const i=Math.floor(Math.random()*QUOTES.length);
+  const q=QUOTES[i];
+  document.getElementById('fs-quote').innerHTML=
+    `"${q.q}"${q.a?`<span class="fs-quote-attr">— ${q.a}</span>`:''}`;
+}
+
+// ══════ THEME ══════
+const themeToggle=document.getElementById('theme-toggle');
+if(localStorage.getItem('focusAppTheme')==='light'){document.body.classList.add('lm');themeToggle.innerText='☀️ Light';}
+themeToggle.onclick=()=>{
+  document.body.classList.toggle('lm');
+  const l=document.body.classList.contains('lm');
+  themeToggle.innerText=l?'☀️ Light':'🌙 Dark';
+  localStorage.setItem('focusAppTheme',l?'light':'dark');
+  renderChart();drawPip();
+};
+
+// ══════ DATA ══════
+let appData={tasks:[],history:{},lastExportDate:null,dailyGoal:6*3600,streak:0,lastGoalHitDate:null,goalChangeDate:null,goalChangeCount:0};
+const ONE_WEEK=7*24*60*60*1000;
+let lastKnownDate='';
+try{
+  const s=localStorage.getItem('focusAppData');
+  if(s){
+    appData=JSON.parse(s);
+    for(let k in appData.history){
+      if(isNaN(appData.history[k].active))appData.history[k].active=0;
+      if(isNaN(appData.history[k].focus))appData.history[k].focus=0;
+      if(!appData.history[k].tags)appData.history[k].tags={Study:0,Class:0,Browsing:0,Note:0};
+    }
+    appData.tasks.forEach(t=>{if(t.allocatedTime===undefined)t.allocatedTime=0;if(t.spentTime===undefined)t.spentTime=0;});
+    ['lastExportDate','dailyGoal','streak','lastGoalHitDate','goalChangeDate','goalChangeCount'].forEach(k=>{
+      if(appData[k]===undefined)appData[k]=(k==='dailyGoal'?6*3600:k==='streak'||k==='goalChangeCount'?0:null);
+    });
+  }
+}catch(e){}
+
+window.addEventListener('beforeunload',saveData);
+function saveData(){try{localStorage.setItem('focusAppData',JSON.stringify(appData));}catch(e){}}
+function cleanOld(){if(!appData.tasks)appData.tasks=[];appData.tasks=appData.tasks.filter(t=>(Date.now()-t.timestamp)<ONE_WEEK);saveData();}
+function today(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function parseDateStr(s){const p=s.split('-');return new Date(p[0],p[1]-1,p[2]);}
+function daysDiff(a,b){if(!a)return 999;return Math.round((parseDateStr(b)-parseDateStr(a))/(864e5));}
+function fmtDur(s){
+  if(!s||isNaN(s)||s===0)return'0s';
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60,p=[];
+  if(h>0)p.push(h+'h');if(m>0)p.push(m+'m');if(sec>0||p.length===0)p.push(sec+'s');
+  return p.join(' ');
+}
+
+// ══════ STREAK / GOAL ══════
+function checkStreak(){
+  const t=today(),f=appData.history[t]?appData.history[t].focus:0,diff=daysDiff(appData.lastGoalHitDate,t);
+  if(diff>1)appData.streak=0;
+  if(f>=appData.dailyGoal&&appData.lastGoalHitDate!==t){appData.streak=diff===1?appData.streak+1:1;appData.lastGoalHitDate=t;}
+  updateGoalUI();
+}
+function updateGoalUI(){
+  const t=today(),f=appData.history[t]?appData.history[t].focus:0,h=appData.dailyGoal/3600;
+  document.getElementById('goal-text').innerText=`${Number.isInteger(h)?h:h.toFixed(1)}h Focus`;
+  document.getElementById('streak-text').innerText=`🔥 ${appData.streak} Day${appData.streak===1?'':'s'}`;
+  document.getElementById('streak-sub').innerText=appData.streak>0?`${appData.streak} day${appData.streak===1?'':'s'} in a row!`:'Start your streak today!';
+  const pct=(f/appData.dailyGoal)*100,fill=document.getElementById('goal-bar');
+  fill.style.width=`${Math.min(pct,100)}%`;
+  pct>=100?fill.classList.add('ok'):fill.classList.remove('ok');
+  const sub=document.getElementById('goal-sub');
+  if(f>=appData.dailyGoal){sub.innerText='🎉 Goal Achieved!';sub.style.color='var(--a3)';}
+  else{
+    const left=appData.dailyGoal-f,hL=Math.floor(left/3600),mL=Math.floor((left%3600)/60),p=[];
+    if(hL>0)p.push(hL+'h');if(mL>0)p.push(mL+'m');if(hL===0&&mL===0)p.push('<1m');
+    sub.innerText=p.join(' ')+' remaining';sub.style.color='var(--dim)';
+  }
+}
+document.getElementById('goal-text').onclick=()=>{
+  const t=today();
+  if(appData.goalChangeDate!==t){appData.goalChangeDate=t;appData.goalChangeCount=0;}
+  if(appData.goalChangeCount>=1){alert('Goal already changed today.');return;}
+  const v=prompt('Daily focus goal (hours):',( appData.dailyGoal/3600).toFixed(1));
+  if(v!==null&&!isNaN(v)&&v>0){const ng=parseFloat(v)*3600;if(ng!==appData.dailyGoal){appData.dailyGoal=ng;appData.goalChangeCount++;saveData();checkStreak();}}
+};
+
+// ══════ IMPORT / EXPORT ══════
+function updateBackup(){
+  const el=document.getElementById('backup-status');
+  if(!appData.lastExportDate){el.innerHTML='<span class="bkw">⚠️ No backup yet!</span>';return;}
+  const age=Date.now()-appData.lastExportDate,d=new Date(appData.lastExportDate);
+  const ds=d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})+' at '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  el.innerHTML=age>3*864e5?`Last backup: ${ds}<br><span class="bkw">⚠️ Over 3 days — backup now!</span>`:`Last backup: ${ds}`;
+}
+document.getElementById('export-btn').onclick=()=>{
+  const b=new Blob([JSON.stringify(appData,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`focusflow-${today()}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  appData.lastExportDate=Date.now();saveData();updateBackup();
+};
+document.getElementById('import-btn').onclick=()=>document.getElementById('import-file').click();
+document.getElementById('import-file').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const p=JSON.parse(ev.target.result);
+      if(p.tasks!==undefined&&p.history!==undefined){
+        appData=p;
+        ['dailyGoal','streak','lastGoalHitDate','goalChangeDate','goalChangeCount'].forEach(k=>{
+          if(appData[k]===undefined)appData[k]=(k==='dailyGoal'?6*3600:k==='streak'||k==='goalChangeCount'?0:null);
+        });
+        saveData();cleanOld();renderTasks();renderHistory();checkStreak();updateBackup();alert('Imported!');
+      }else alert('Invalid file.');
+    }catch{alert('Could not read JSON.');}
+    document.getElementById('import-file').value='';
+  };r.readAsText(f);
+};
+
+// ══════ TASKS ══════
+function updateDropdown(){
+  const sel=document.getElementById('task-select'),cur=sel.value;
+  sel.innerHTML='<option value="">General Focus</option>';
+  appData.tasks.forEach(t=>{if(!t.completed){const o=document.createElement('option');o.value=t.id;o.innerText=t.text;sel.appendChild(o);}});
+  if([...sel.options].some(o=>o.value===cur))sel.value=cur;
+}
+function renderTasks(){
+  const list=document.getElementById('task-list');list.innerHTML='';
+  if(!appData.tasks.length){list.innerHTML='<li class="empty">No tasks yet. Add one above!</li>';updateDropdown();return;}
+  appData.tasks.forEach(task=>{
+    const li=document.createElement('li');li.className='ti'+(task.completed?' done':'');
+    const chk=document.createElement('div');chk.className='chk';if(task.completed)chk.innerText='✓';
+    chk.onclick=()=>{task.completed=!task.completed;saveData();renderTasks();};
+    const body=document.createElement('div');body.className='tb';
+    const txt=document.createElement('div');txt.className='tt';txt.innerText=task.text;body.appendChild(txt);
+    if(task.allocatedTime>0){
+      const meta=document.createElement('div');meta.className='tm';meta.id=`tp-${task.id}`;
+      meta.innerText=`${Math.floor(task.spentTime/60)}m / ${Math.floor(task.allocatedTime/60)}m`;body.appendChild(meta);
+      const bar=document.createElement('div');bar.className='tbar';
+      const f=document.createElement('div');f.className='tbar-f';f.id=`pf-${task.id}`;
+      const p=(task.spentTime/task.allocatedTime)*100;
+      f.style.width=`${Math.min(p,100)}%`;f.style.background=p<80?'var(--a3)':p<=100?'var(--yellow)':'var(--red)';
+      bar.appendChild(f);body.appendChild(bar);
+    }else if(task.spentTime>0){
+      const meta=document.createElement('div');meta.className='tm';meta.id=`tp-${task.id}`;meta.innerText=`Focus: ${Math.floor(task.spentTime/60)}m`;body.appendChild(meta);
+    }
+    const del=document.createElement('button');del.className='btn br bsm';del.innerText='✕';
+    del.onclick=()=>{appData.tasks=appData.tasks.filter(t=>t.id!==task.id);saveData();renderTasks();};
+    li.appendChild(chk);li.appendChild(body);li.appendChild(del);list.appendChild(li);
+  });
+  updateDropdown();
+}
+function addTask(){
+  const txt=document.getElementById('new-task').value.trim();if(!txt)return;
+  const tv=parseInt(document.getElementById('new-task-time').value);
+  appData.tasks.unshift({id:Date.now(),text:txt,completed:false,timestamp:Date.now(),allocatedTime:(!isNaN(tv)&&tv>0)?tv*60:0,spentTime:0});
+  saveData();renderTasks();document.getElementById('new-task').value='';document.getElementById('new-task-time').value='';
+}
+document.getElementById('add-btn').onclick=addTask;
+document.getElementById('new-task').onkeypress=e=>{if(e.key==='Enter')addTask();};
+document.getElementById('new-task-time').onkeypress=e=>{if(e.key==='Enter')addTask();};
+
+// ══════ HISTORY / CHART ══════
+let myChart=null;
+const graphModes=['7-Day Trend','30-Day Trend','Tag Distribution'];
+let curGraph=0;
+
+function ensureToday(){
+  const t=today();
+  if(!appData.history[t])appData.history[t]={focus:0,active:0,sessions:[],tags:{Study:0,Class:0,Browsing:0,Note:0}};
+  if(isNaN(appData.history[t].active))appData.history[t].active=0;
+  if(isNaN(appData.history[t].focus))appData.history[t].focus=0;
+  if(!appData.history[t].tags)appData.history[t].tags={Study:0,Class:0,Browsing:0,Note:0};
+  return t;
+}
+
+// (active tracking now handled inside masterTick)
+
+document.getElementById('prev-graph').onclick=()=>{curGraph=(curGraph-1+graphModes.length)%graphModes.length;renderChart();};
+document.getElementById('next-graph').onclick=()=>{curGraph=(curGraph+1)%graphModes.length;renderChart();};
+
+function renderChart(){
+  if(typeof Chart==='undefined')return;
+  const c=document.getElementById('trend-chart'),ctx2=c.getContext('2d'),mode=graphModes[curGraph];
+  document.getElementById('graph-title').innerText=mode;
+  const dark=!document.body.classList.contains('lm');
+  Chart.defaults.color=dark?'#8888aa':'#5a5a7a';
+  if(myChart)myChart.destroy();
+  const gc=dark?'rgba(255,255,255,.05)':'rgba(0,0,0,.06)';
+  if(mode.includes('Trend')){
+    const days=mode==='7-Day Trend'?7:30,lb=[],fd=[],ad=[];
+    for(let i=days-1;i>=0;i--){
+      const d=new Date();d.setDate(d.getDate()-i);
+      const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      lb.push(d.toLocaleDateString(undefined,{month:'short',day:'numeric'}));
+      if(appData.history[ds]){fd.push((appData.history[ds].focus/60).toFixed(1));ad.push((appData.history[ds].active/60).toFixed(1));}
+      else{fd.push(0);ad.push(0);}
+    }
+    myChart=new Chart(ctx2,{type:'line',data:{labels:lb,datasets:[
+      {label:'Focus (min)',data:fd,borderColor:'#7c6bff',backgroundColor:'rgba(124,107,255,.1)',borderWidth:2,fill:true,tension:.4,pointBackgroundColor:'#7c6bff',pointRadius:3,pointHoverRadius:5},
+      {label:'Active (min)',data:ad,borderColor:'#6bffb8',backgroundColor:'rgba(107,255,184,.06)',borderWidth:2,fill:true,tension:.4,pointBackgroundColor:'#6bffb8',pointRadius:3,pointHoverRadius:5}
+    ]},options:{responsive:true,animation:{duration:400},plugins:{legend:{labels:{color:dark?'#8888aa':'#5a5a7a',font:{size:11},boxWidth:12}}},scales:{y:{beginAtZero:true,grid:{color:gc},ticks:{color:dark?'#8888aa':'#5a5a7a',font:{size:10}}},x:{grid:{color:gc},ticks:{color:dark?'#8888aa':'#5a5a7a',font:{size:10}}}}}});
+  }else{
+    let tt={Study:0,Class:0,Browsing:0,Note:0};
+    for(let d in appData.history){const tg=appData.history[d].tags;if(tg)for(let t in tg)if(tt[t]!==undefined&&!isNaN(tg[t]))tt[t]+=tg[t];}
+    myChart=new Chart(ctx2,{type:'doughnut',data:{labels:['Study','Class','Browsing','Note'],datasets:[{
+      data:[(tt.Study/60).toFixed(1),(tt.Class/60).toFixed(1),(tt.Browsing/60).toFixed(1),(tt.Note/60).toFixed(1)],
+      backgroundColor:['rgba(124,107,255,.8)','rgba(107,255,184,.8)','rgba(255,107,157,.8)','rgba(255,184,107,.8)'],borderWidth:0}]},
+      options:{responsive:true,animation:{duration:400},plugins:{legend:{position:'bottom',labels:{color:dark?'#8888aa':'#5a5a7a',font:{size:11},padding:12}}}}});
+  }
+}
+function renderHistory(){
+  const hc=document.getElementById('history-container');hc.innerHTML='';
+  const t=today(),dates=Object.keys(appData.history).sort().reverse();
+  if(!dates.length){hc.innerHTML='<div class="empty">No activity recorded yet.</div>';renderChart();return;}
+  const frag=document.createDocumentFragment();
+  dates.forEach(ds=>{
+    const d=appData.history[ds];
+    const div=document.createElement('div');div.className='hd';
+    const lbl=ds===t?'Today':new Date(ds).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+    let score=Math.min(100,Math.round((d.focus/appData.dailyGoal)*100));
+    const sc=score>=100?'chi':score>=50?'cm':'clo';
+    div.innerHTML=`<div class="hdate">${lbl}</div><div class="hstats">
+<div class="hs"><div class="hs-l">Focus</div><div class="hs-v cf">${fmtDur(d.focus)}</div></div>
+<div class="hs"><div class="hs-l">Active</div><div class="hs-v ca">${fmtDur(d.active)}</div></div>
+<div class="hs"><div class="hs-l">Daily Target</div><div class="hs-v ${sc}">${score}%</div></div>
+</div>`;
+    if(ds===t&&d.sessions&&d.sessions.length){
+      const sd=document.createElement('div');sd.className='hsess';
+      d.sessions.forEach(s=>{if(!s.duration)return;const r=document.createElement('div');r.className='hses';
+        r.innerHTML=`• ${s.start} — ${fmtDur(s.duration)}${s.tag?`<span class="tpill">${s.tag}</span>`:''}`;sd.appendChild(r);});
+      div.appendChild(sd);
+    }
+    frag.appendChild(div);
+  });
+  hc.appendChild(frag);renderChart();
+}
+
+// ══════ CYCLE MODE UI ══════
+let cycleMode=false;
+function toggleCycleMode(){
+  cycleMode=!cycleMode;
+  document.getElementById('cycle-switch').classList.toggle('on',cycleMode);
+  document.getElementById('cycle-opts').style.display=cycleMode?'grid':'none';
+}
+
+// ══════ TIMER STATE ══════
+// Single master interval drives EVERYTHING — no dual setInterval stacking possible
+let masterInterval=null; // the ONE global ticker
+let pauseInterval=null;  // only for counting pause duration display
+let totalSeconds=0,pauseSeconds=0,isPaused=false;
+let timerRunning=false;  // true only when a timer session is active
+let runningTimerMode='focus';
+let runningTaskId=null;
+let isNewSession=true,currentInitialSecs=0;
+let activeTimerMode='focus';
+
+// Cycle state
+let cycleRunning=false;
+let cycleTotal=1,cycleCurrentIdx=0;
+let cycleSegments=[];
+
+// Ring constants
+const FS_CIRC=804.2;
+const MINI_CIRC=326.7;
+
+const pipCanvas=document.getElementById('pip-canvas');
+const pipCtx=pipCanvas.getContext('2d');
+const video=document.getElementById('pip-video');
+const fsOverlay=document.getElementById('fs-overlay');
+
+// ── Single master tick — handles active tracking + timer countdown ──
+function masterTick(){
+  // Always track active time (only when page is not paused and timer is not paused)
+  const t=ensureToday();
+  if(!isPaused){ // don't count active time while user-paused
+    appData.history[t].active++;
+    if(appData.history[t].active%15===0) saveData();
+    if(appData.history[t].active%30===0) renderHistory();
+    // Check for date change
+    if(lastKnownDate!==''&&lastKnownDate!==t) checkStreak();
+    lastKnownDate=t;
+  }
+
+  // Timer countdown — only when timer is active and not paused
+  if(timerRunning && !isPaused){
+    if(totalSeconds>0){
+      totalSeconds--;
+      if(runningTimerMode==='focus') recordFocusTick();
+      updateDisplays();
+    } else {
+      onSegmentEnd();
+    }
+  }
+}
+
+// Start the master interval once at page load — never stop it
+function startMasterInterval(){
+  if(masterInterval) return; // safety: only one ever
+  masterInterval=setInterval(masterTick,1000);
+}
+
+// ── Media session ──
+function setMS(s){if('mediaSession'in navigator)navigator.mediaSession.playbackState=s;}
+if('mediaSession'in navigator){
+  navigator.mediaSession.setActionHandler('play',()=>{if(isPaused)doResume();});
+  navigator.mediaSession.setActionHandler('pause',()=>{if(!isPaused&&timerRunning)doPause();});
+}
+let _pipTransition=false;
+video.addEventListener('enterpictureinpicture',()=>{_pipTransition=true;setTimeout(()=>{_pipTransition=false;},500);});
+video.addEventListener('leavepictureinpicture',()=>{_pipTransition=true;setTimeout(()=>{_pipTransition=false;},500);});
+video.addEventListener('pause',()=>{if(!_pipTransition&&!isPaused&&timerRunning)doPause();});
+video.addEventListener('play',()=>{if(!_pipTransition&&isPaused)doResume();});
+
+// ── Timer mode toggle (setup arrow) ──
+let savedF={m:25,s:0},savedB={m:5,s:0};
+function toggleTimerMode(){
+  if(activeTimerMode==='focus'){
+    savedF.m=document.getElementById('input-min').value;savedF.s=document.getElementById('input-sec').value;
+    activeTimerMode='break';document.getElementById('timer-title').innerText='Break Timer';
+    document.getElementById('dropdown-container').style.display='none';
+    document.getElementById('cycle-toggle-row').style.display='none';
+    document.getElementById('cycle-opts').style.display='none';
+    document.getElementById('input-min').value=savedB.m;document.getElementById('input-sec').value=savedB.s;
+    const sb=document.getElementById('start-btn');sb.className='btn bg bw';
+  }else{
+    savedB.m=document.getElementById('input-min').value;savedB.s=document.getElementById('input-sec').value;
+    activeTimerMode='focus';document.getElementById('timer-title').innerText='Focus Timer';
+    document.getElementById('dropdown-container').style.display='grid';
+    document.getElementById('cycle-toggle-row').style.display='flex';
+    document.getElementById('input-min').value=savedF.m;document.getElementById('input-sec').value=savedF.s;
+    document.getElementById('start-btn').className='btn bp bw';
+  }
+}
+document.getElementById('prev-timer').onclick=toggleTimerMode;
+document.getElementById('next-timer').onclick=toggleTimerMode;
+
+// ── Format ──
+function fmt(s){return`${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;}
+
+// ── Build cycle dots ──
+function buildCycleDots(){
+  const cont=document.getElementById('fs-cycles');
+  cont.innerHTML='';
+  if(!cycleRunning){return;}
+  cycleSegments.forEach((_,i)=>{
+    const d=document.createElement('div');d.className='cy-dot';d.id=`cdot-${i}`;
+    cont.appendChild(d);
+  });
+  updateCycleDots();
+}
+function updateCycleDots(){
+  if(!cycleRunning)return;
+  cycleSegments.forEach((_,i)=>{
+    const d=document.getElementById(`cdot-${i}`);if(!d)return;
+    d.className='cy-dot';
+    const seg=cycleSegments[i];
+    if(i<cycleCurrentIdx){d.classList.add(seg.type==='focus'?'focus-done':'break-done');}
+    else if(i===cycleCurrentIdx){d.classList.add('active');if(seg.type==='break')d.classList.add('is-break');}
+  });
+}
+
+// ── Update all displays ──
+function updateDisplays(){
+  const timeStr=fmt(totalSeconds);
+  document.getElementById('fs-disp').innerText=timeStr;
+  document.getElementById('mini-disp').innerText=timeStr;
+  if(isPaused){
+    document.getElementById('fs-pause-info').innerText=`PAUSED  ${fmt(pauseSeconds)}`;
+    document.getElementById('mini-pause').innerText='PAUSED';
+  }
+  updateRings();
+  drawPip();
+}
+
+function updateRings(){
+  const pct=currentInitialSecs>0?totalSeconds/currentInitialSecs:1;
+  const fsOff=FS_CIRC*pct;
+  const miniOff=MINI_CIRC*pct;
+  const stroke=runningTimerMode==='focus'?'url(#gF)':'url(#gB)';
+  document.getElementById('fs-ring').style.strokeDashoffset=fsOff;
+  document.getElementById('fs-ring').setAttribute('stroke',stroke);
+  document.getElementById('mini-ring').style.strokeDashoffset=miniOff;
+  document.getElementById('mini-ring').setAttribute('stroke',stroke);
+
+  // Color classes
+  const focusCls='fm',breakCls='bm',cls=runningTimerMode==='focus'?focusCls:breakCls;
+  ['fs-disp','mini-disp'].forEach(id=>{const el=document.getElementById(id);el.className=el.className.replace(/\bfm\b|\bbm\b/g,'').trim()+' '+cls;});
+}
+
+// ── Update FS overlay theme ──
+function updateFsTheme(){
+  const badge=document.getElementById('fs-mode-badge');
+  const txt=document.getElementById('fs-mode-txt');
+  if(runningTimerMode==='focus'){
+    fsOverlay.classList.remove('break-bg');
+    badge.classList.remove('break-badge');
+    txt.innerText=cycleRunning?`Focus — Round ${Math.floor(cycleCurrentIdx/2)+1} of ${cycleTotal}`:'Focus';
+  }else{
+    fsOverlay.classList.add('break-bg');
+    badge.classList.add('break-badge');
+    const bNum=Math.ceil(cycleCurrentIdx/2);
+    txt.innerText=cycleRunning?(bNum%cycleTotal===0&&cycleTotal>1?'Long Break ☕':`Break ${bNum}`):'Break';
+  }
+}
+
+// ── Open / Close fullscreen ──
+function openFullscreen(){
+  randomQuote();
+  updateFsTheme();
+  buildCycleDots();
+  fsOverlay.classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function closeFullscreen(){
+  fsOverlay.classList.remove('active');
+  document.body.style.overflow='';
+}
+
+// ── Record focus tick ──
+function recordFocusTick(){
+  const t=ensureToday();
+  if(!appData.history[t].sessions)appData.history[t].sessions=[];
+  const sessions=appData.history[t].sessions;
+  const tag=document.getElementById('tag-select').value;
+  if(isNewSession||!sessions.length||sessions[sessions.length-1].type!=='focus'){
+    sessions.push({type:'focus',tag,start:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),duration:0});
+    isNewSession=false;
+  }
+  sessions[sessions.length-1].duration++;
+  appData.history[t].focus++;
+  if(tag&&appData.history[t].tags){if(appData.history[t].tags[tag]===undefined)appData.history[t].tags[tag]=0;appData.history[t].tags[tag]++;}
+  if(runningTaskId){
+    const task=appData.tasks.find(t2=>t2.id==runningTaskId);
+    if(task&&!task.completed){
+      task.spentTime++;
+      const ts=document.getElementById(`tp-${task.id}`);
+      if(ts){if(task.allocatedTime>0)ts.innerText=`${Math.floor(task.spentTime/60)}m / ${Math.floor(task.allocatedTime/60)}m`;else ts.innerText=`Focus: ${Math.floor(task.spentTime/60)}m`;}
+      const pf=document.getElementById(`pf-${task.id}`);
+      if(pf){const p=(task.spentTime/task.allocatedTime)*100;pf.style.width=`${Math.min(p,100)}%`;pf.style.background=p<80?'var(--a3)':p<=100?'var(--yellow)':'var(--red)';}
+    }
+  }
+  updateGoalUI();
+  if(appData.history[t].focus===appData.dailyGoal){checkStreak();saveData();}
+}
+
+// (tick logic moved into masterTick above)
+
+// ── Segment end ──
+function onSegmentEnd(){
+  // Pause the countdown while we transition
+  timerRunning=false;
+  if(isPaused){isPaused=false;clearInterval(pauseInterval);pauseInterval=null;}
+  if(cycleRunning){
+    cycleCurrentIdx++;
+    if(cycleCurrentIdx>=cycleSegments.length){
+      endAll();
+      playDing('focus');
+      showNotif('🎉 All cycles complete! Great work!');
+      return;
+    }
+    const seg=cycleSegments[cycleCurrentIdx];
+    runningTimerMode=seg.type;
+    totalSeconds=seg.secs;
+    currentInitialSecs=seg.secs;
+    isNewSession=true;
+    // Reset pause UI cleanly
+    document.getElementById('fs-pause').style.display='inline-flex';
+    document.getElementById('fs-resume').style.display='none';
+    document.getElementById('btn-pause').style.display='inline-flex';
+    document.getElementById('btn-resume').style.display='none';
+    document.getElementById('fs-pause-info').style.display='none';
+    document.getElementById('mini-pause').style.display='none';
+    randomQuote();
+    updateFsTheme();
+    updateCycleDots();
+    updateDisplays();
+    const msg=seg.type==='focus'?'🔥 Break over! Time to focus!':'☕ Focus session done! Take a break.';
+    playDing(seg.type==='focus'?'break':'focus'); // ding matches the segment that just ENDED
+    showNotif(msg);
+    timerRunning=true; // resume the countdown for next segment
+    if(runningTimerMode==='focus')recordFocusTick();
+  }else{
+    endAll();
+    playDing(runningTimerMode);
+    showNotif(runningTimerMode==='focus'?'🎉 Focus session complete!':'☕ Break over — back to work!');
+  }
+}
+
+// ── Sound ──
+function playDing(type){
+  try{
+    const ac=new(window.AudioContext||window.webkitAudioContext)();
+    const sequences={
+      focus:[
+        {f:523,t:0,d:.12},   // C5
+        {f:659,t:.13,d:.12},  // E5
+        {f:784,t:.26,d:.22},  // G5
+      ],
+      break:[
+        {f:784,t:0,d:.12},    // G5
+        {f:659,t:.13,d:.12},  // E5
+        {f:523,t:.26,d:.22},  // C5
+      ]
+    };
+    const seq=sequences[type]||sequences.focus;
+    seq.forEach(({f,t,d})=>{
+      const osc=ac.createOscillator();
+      const gain=ac.createGain();
+      osc.connect(gain);gain.connect(ac.destination);
+      osc.type='sine';osc.frequency.value=f;
+      const start=ac.currentTime+t;
+      gain.gain.setValueAtTime(0,start);
+      gain.gain.linearRampToValueAtTime(0.28,start+0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001,start+d);
+      osc.start(start);osc.stop(start+d+0.05);
+    });
+  }catch(e){}
+}
+
+function showNotif(msg){
+  // Try browser notification
+  if('Notification'in window&&Notification.permission==='granted'){
+    new Notification('FocusFlow',{body:msg,icon:''});
+  }else{
+    // Fallback: brief overlay message
+    const n=document.createElement('div');
+    n.style.cssText='position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(124,107,255,.9);color:#fff;padding:12px 24px;border-radius:50px;font-weight:600;font-size:14px;z-index:99999;backdrop-filter:blur(10px);animation:fadeUp .3s ease;pointer-events:none';
+    n.innerText=msg;document.body.appendChild(n);
+    setTimeout(()=>n.remove(),3500);
+  }
+}
+
+// ── START ──
+document.getElementById('start-btn').onclick=()=>{
+  const tag=document.getElementById('tag-select').value;
+  if(activeTimerMode==='focus'&&!tag){alert('Please select a tag before starting!');return;}
+  const m=parseInt(document.getElementById('input-min').value)||0,s=parseInt(document.getElementById('input-sec').value)||0;
+  const focusSecs=(m*60)+s;if(focusSecs<=0)return;
+
+  // Request notification permission
+  if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();
+
+  runningTaskId=document.getElementById('task-select').value;
+
+  if(cycleMode&&activeTimerMode==='focus'){
+    // Build cycle segments
+    cycleRunning=true;
+    cycleTotal=Math.max(1,parseInt(document.getElementById('cycle-count').value)||4);
+    const bMin=Math.max(1,parseInt(document.getElementById('break-min').value)||5);
+    const lbMin=Math.max(1,parseInt(document.getElementById('long-break-min').value)||15);
+    cycleSegments=[];
+    for(let i=0;i<cycleTotal;i++){
+      cycleSegments.push({type:'focus',secs:focusSecs});
+      if(i<cycleTotal-1){cycleSegments.push({type:'break',secs:bMin*60});}
+      else{cycleSegments.push({type:'break',secs:lbMin*60});}
+    }
+    cycleCurrentIdx=0;
+    runningTimerMode='focus';
+    totalSeconds=focusSecs;currentInitialSecs=focusSecs;
+  }else{
+    cycleRunning=false;cycleSegments=[];cycleCurrentIdx=0;
+    runningTimerMode=activeTimerMode;
+    totalSeconds=focusSecs;currentInitialSecs=focusSecs;
+  }
+
+  isNewSession=true;isPaused=false;timerRunning=true;
+  document.getElementById('timer-setup').style.display='none';
+  document.getElementById('timer-running').style.display='block';
+  document.getElementById('prev-timer').style.visibility='hidden';
+  document.getElementById('next-timer').style.visibility='hidden';
+
+  setMS('playing');
+  if(!video.srcObject)video.srcObject=pipCanvas.captureStream(30);
+  video.play().catch(()=>{});
+
+  if(runningTimerMode==='focus')recordFocusTick();
+  updateDisplays();
+  openFullscreen();
+};
+
+// ── PAUSE ──
+function doPause(){
+  if(isPaused||!timerRunning) return;
+  isPaused=true;
+  clearInterval(pauseInterval);pauseInterval=null;
+  document.getElementById('fs-pause').style.display='none';
+  document.getElementById('fs-resume').style.display='inline-flex';
+  document.getElementById('btn-pause').style.display='none';
+  document.getElementById('btn-resume').style.display='inline-flex';
+  document.getElementById('fs-pause-info').style.display='block';
+  document.getElementById('mini-pause').style.display='block';
+  pauseSeconds=0;updateDisplays();
+  pauseInterval=setInterval(()=>{
+    pauseSeconds++;
+    document.getElementById('fs-pause-info').innerText=`PAUSED  ${fmt(pauseSeconds)}`;
+    drawPip();
+  },1000);
+  saveData();setMS('paused');if(!video.paused)video.pause();
+}
+function doResume(){
+  if(!isPaused) return;
+  isPaused=false;
+  clearInterval(pauseInterval);pauseInterval=null;
+  document.getElementById('fs-pause').style.display='inline-flex';
+  document.getElementById('fs-resume').style.display='none';
+  document.getElementById('btn-pause').style.display='inline-flex';
+  document.getElementById('btn-resume').style.display='none';
+  document.getElementById('fs-pause-info').style.display='none';
+  document.getElementById('mini-pause').style.display='none';
+  updateDisplays();setMS('playing');
+  if(video.paused)video.play();
+}
+document.getElementById('fs-pause').onclick=doPause;
+document.getElementById('fs-resume').onclick=doResume;
+document.getElementById('btn-pause').onclick=doPause;
+document.getElementById('btn-resume').onclick=doResume;
+
+// ── STOP / END ──
+function endAll(){
+  timerRunning=false;isPaused=false;
+  clearInterval(pauseInterval);pauseInterval=null;
+  cycleRunning=false;cycleSegments=[];cycleCurrentIdx=0;
+  document.getElementById('timer-setup').style.display='block';
+  document.getElementById('timer-running').style.display='none';
+  document.getElementById('fs-pause').style.display='inline-flex';
+  document.getElementById('fs-resume').style.display='none';
+  document.getElementById('btn-pause').style.display='inline-flex';
+  document.getElementById('btn-resume').style.display='none';
+  document.getElementById('fs-pause-info').style.display='none';
+  document.getElementById('mini-pause').style.display='none';
+  document.getElementById('prev-timer').style.visibility='visible';
+  document.getElementById('next-timer').style.visibility='visible';
+  closeFullscreen();
+  renderHistory();saveData();setMS('none');
+  if(document.pictureInPictureElement)document.exitPictureInPicture();
+  video.pause();
+}
+document.getElementById('fs-stop').onclick=endAll;
+document.getElementById('btn-clear').onclick=endAll;
+
+// ── EXPAND ──
+document.getElementById('btn-expand').onclick=()=>{randomQuote();updateFsTheme();buildCycleDots();fsOverlay.classList.add('active');document.body.style.overflow='hidden';};
+document.getElementById('fs-back-btn').onclick=closeFullscreen;
+
+// ── PiP ──
+function drawPip(){
+  const dark=!document.body.classList.contains('lm');
+  const W=400,H=200;
+  pipCtx.fillStyle=dark?'#0a0a0f':'#f0f0f8';pipCtx.fillRect(0,0,W,H);
+  // progress bar
+  if(currentInitialSecs>0){
+    const p=1-(totalSeconds/currentInitialSecs);
+    pipCtx.fillStyle=runningTimerMode==='focus'?'rgba(124,107,255,.22)':'rgba(107,255,184,.18)';
+    pipCtx.fillRect(0,H-8,W*p,8);
+  }
+  // mode label
+  pipCtx.fillStyle=runningTimerMode==='focus'?'#7c6bff':'#6bffb8';
+  pipCtx.font='bold 13px sans-serif';pipCtx.textAlign='left';pipCtx.textBaseline='top';
+  const modeLabel=runningTimerMode==='focus'?'FOCUS':'BREAK';
+  pipCtx.fillText(modeLabel,20,18);
+  // cycle info
+  if(cycleRunning){
+    pipCtx.fillStyle=dark?'#8888aa':'#5a5a7a';
+    pipCtx.font='12px sans-serif';
+    pipCtx.fillText(`Cycle ${Math.floor(cycleCurrentIdx/2)+1}/${cycleTotal}`,W-100,18);
+  }
+  // big time
+  pipCtx.fillStyle=dark?'#e8e8f0':'#1a1a2e';
+  pipCtx.font=`${isPaused?'300':'300'} 72px 'DM Mono',monospace`;
+  pipCtx.textAlign='center';pipCtx.textBaseline='middle';
+  pipCtx.fillText(fmt(totalSeconds),W/2,H/2-(isPaused?14:0));
+  if(isPaused){pipCtx.fillStyle='#ff5757';pipCtx.font='bold 16px sans-serif';pipCtx.fillText('⏸ PAUSED  '+fmt(pauseSeconds),W/2,H/2+38);}
+}
+
+async function doPip(){
+  try{
+    if(document.pictureInPictureElement)await document.exitPictureInPicture();
+    else{await video.play();await video.requestPictureInPicture();}
+  }catch(e){}
+}
+document.getElementById('fs-pip-btn').onclick=doPip;
+document.getElementById('btn-pip').onclick=doPip;
+
+// ══════ RESET ══════
+let wipeState='idle',wipeVal=10,wipeTimer=null;
+const resetBtn=document.getElementById('full-reset-btn');
+resetBtn.onclick=()=>{
+  if(wipeState==='idle'){
+    wipeState='counting';resetBtn.classList.add('danger');wipeVal=10;resetBtn.innerText=`Waiting… ${wipeVal}s`;
+    wipeTimer=setInterval(()=>{wipeVal--;resetBtn.innerText=`Waiting… ${wipeVal}s`;
+      if(wipeVal<=0){clearInterval(wipeTimer);wipeState='armed';resetBtn.innerText='CONFIRM WIPE NOW';resetBtn.classList.remove('danger');resetBtn.classList.add('ready');}
+    },1000);
+  }else if(wipeState==='armed'){
+    localStorage.removeItem('focusAppData');
+    appData={tasks:[],history:{},lastExportDate:null,dailyGoal:21600,streak:0,lastGoalHitDate:null,goalChangeDate:null,goalChangeCount:0};
+    renderTasks();renderHistory();checkStreak();updateBackup();
+    wipeState='idle';resetBtn.innerText='Clear All Data Permanently';resetBtn.classList.remove('ready');
+  }
+};
+
+// ══════ INIT ══════
+lastKnownDate=today();cleanOld();renderTasks();renderHistory();checkStreak();updateBackup();
+startMasterInterval(); // single global ticker — never stops
+</script>
+</body>
+</html>
