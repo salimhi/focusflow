@@ -284,7 +284,7 @@ canvas#trend-chart{max-height:200px}
 .vft-mode{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--a);padding:2px 6px;background:rgba(124,107,255,.25);border-radius:4px}
 .vft-mode.bk{color:var(--a3);background:rgba(107,255,184,.2)}
 
-/* Fixed floating timer — shown in cinema, full-page, and YT native fullscreen */
+/* Fixed floating timer — always visible on YT page when timer is running */
 #floating-timer{
   position:fixed;top:14px;right:16px;z-index:9100;
   background:rgba(0,0,0,.75);backdrop-filter:blur(14px);
@@ -292,10 +292,9 @@ canvas#trend-chart{max-height:200px}
   padding:7px 16px;display:none;align-items:center;gap:10px;
   font-family:'DM Mono',monospace;color:#fff;
   box-shadow:0 4px 20px rgba(0,0,0,.4);
-  transition:opacity .4s;pointer-events:none;user-select:none;
+  pointer-events:none;user-select:none;
 }
 #floating-timer.show{display:flex}
-#floating-timer.fade{opacity:0}
 .ft-mode{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
   color:var(--a);padding:2px 7px;background:rgba(124,107,255,.25);border-radius:5px}
 .ft-mode.bk{color:var(--a3);background:rgba(107,255,184,.2)}
@@ -1214,38 +1213,12 @@ function updateYtTimerBar(){
   }
 }
 
-let _ftHideTimer=null;
+let _ftHideTimer=null; // kept for compatibility but unused
 function hideFloatingTimer(){
-  clearTimeout(_ftHideTimer);
   document.getElementById('floating-timer').classList.remove('show');
   document.getElementById('floating-timer').classList.remove('fade');
 }
-function scheduleFloatingTimerFade(){
-  clearTimeout(_ftHideTimer);
-  document.getElementById('floating-timer').classList.remove('fade');
-  _ftHideTimer=setTimeout(()=>{
-    // Only fade in full-page mode or browser fullscreen — in default/cinema always show
-    if(currentViewMode==='fullpage'||document.fullscreenElement){
-      document.getElementById('floating-timer').classList.add('fade');
-    }
-  },4000);
-}
-
-// Mouse move on YT page — reveal floating timer and reset hide timer
-document.addEventListener('mousemove',()=>{
-  const onYtPage=document.getElementById('yt-page').classList.contains('active');
-  if(!onYtPage||!timerRunning)return;
-  const ft=document.getElementById('floating-timer');
-  ft.classList.remove('fade');
-  scheduleFloatingTimerFade();
-});
-// Touch support
-document.addEventListener('touchstart',()=>{
-  const onYtPage=document.getElementById('yt-page').classList.contains('active');
-  if(!onYtPage||!timerRunning)return;
-  document.getElementById('floating-timer').classList.remove('fade');
-  scheduleFloatingTimerFade();
-});
+// No auto-hide — floating timer always visible when running
 
 // ── FS open/close ──
 function openFullscreen(){
@@ -1631,12 +1604,10 @@ function setViewMode(mode){
   });
   if(mode==='cinema') layout.classList.add('cinema');
   else if(mode==='fullpage'){ytPage.classList.add('fs-mode');window.scrollTo({top:0,behavior:'smooth'});}
-  // In full-page mode, start fade timer for floating timer
-  if(mode==='fullpage') scheduleFloatingTimerFade();
-  else {
-    // In default/cinema always show floating timer (no fade)
-    clearTimeout(_ftHideTimer);
-    if(timerRunning) document.getElementById('floating-timer').classList.remove('fade');
+  // Always show floating timer — no fade in any mode
+  if(timerRunning){
+    document.getElementById('floating-timer').classList.add('show');
+    document.getElementById('floating-timer').classList.remove('fade');
   }
 }
 
@@ -1671,10 +1642,9 @@ document.addEventListener('fullscreenchange',()=>{
     videoWrapEl.appendChild(floatingTimerEl);
     if(timerRunning){floatingTimerEl.classList.add('show');floatingTimerEl.classList.remove('fade');}
 
-    // Also show embedded timer
+    // Show embedded timer — stays visible always, no auto-hide
     if(timerRunning) fst.classList.add('show');
     clearTimeout(vidFsHideTimer);
-    vidFsHideTimer=setTimeout(()=>{fst.classList.add('fade');scheduleFloatingTimerFade();},4000);
     videoWrapEl.addEventListener('mousemove',onVidMouseMove);
     videoWrapEl.addEventListener('click',onVidMouseMove);
   }else{
@@ -1700,12 +1670,8 @@ document.addEventListener('fullscreenchange',()=>{
 function onVidMouseMove(){
   const fst=document.getElementById('video-fs-timer');
   fst.classList.remove('fade');
-  if(timerRunning)fst.classList.add('show');
-  clearTimeout(vidFsHideTimer);
-  vidFsHideTimer=setTimeout(()=>fst.classList.add('fade'),4000);
-  // Also reveal floating timer
-  document.getElementById('floating-timer').classList.remove('fade');
-  scheduleFloatingTimerFade();
+  if(timerRunning) fst.classList.add('show');
+  // No auto-hide — embedded timer stays permanently visible
 }
 
 // Expand from YT page
