@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>FocusFlow</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
@@ -358,6 +362,167 @@ canvas#trend-chart{max-height:200px}
 @media(max-width:480px){.bo-time{font-size:56px}}
 .bo-sub{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:28px;text-align:center;padding:0 20px}
 .bo-btns{display:flex;gap:10px}
+/* ══════════════════════════════════════════
+   MOBILE / ANDROID RESPONSIVE
+══════════════════════════════════════════ */
+
+/* Prevent text size inflate on rotation */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* Remove hover effects on touch — they get stuck */
+@media (hover:none) {
+  .stat-card:hover{transform:none}
+  .btn:hover{transform:none;box-shadow:none}
+  .bp:hover{box-shadow:0 4px 18px rgba(124,107,255,.3)}
+  .card:hover{border-color:rgba(255,255,255,.08)}
+  .ti:hover{background:rgba(255,255,255,.02);border-color:transparent}
+  .hd:hover{background:rgba(255,255,255,.02)}
+  .note-item:hover{background:rgba(255,255,255,.02);border-color:var(--glass-b)}
+}
+
+/* Bigger touch targets for all buttons */
+@media (max-width:768px){
+  /* Base */
+  .app{padding:16px 12px 100px} /* bottom padding for nav bar */
+
+  /* Topbar */
+  .topbar{margin-bottom:16px;gap:8px}
+  .topbar-right{gap:6px}
+  .theme-btn{padding:8px 12px;font-size:12px}
+  .logo{font-size:20px}
+  .logo-sub{font-size:10px}
+
+  /* Stats — 2 col on mid mobile */
+  .stats-grid{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .stat-card{padding:14px 16px}
+  .stat-val{font-size:22px}
+
+  /* Main grid — always 1 col on mobile */
+  .main-grid{grid-template-columns:1fr;gap:12px}
+  .card{padding:18px 16px;border-radius:16px}
+
+  /* Buttons — minimum 44px touch target */
+  .btn{min-height:44px;padding:11px 14px;font-size:14px}
+  .bsm{min-height:38px;padding:9px 12px;font-size:13px}
+
+  /* Inputs */
+  input[type=text],input[type=number],select,textarea{
+    font-size:16px; /* prevent iOS zoom on focus */
+    padding:12px 14px;min-height:44px
+  }
+  textarea{min-height:100px}
+
+  /* Tasks */
+  .task-row{grid-template-columns:1fr auto}
+  .task-row input[type=number]{width:72px}
+  .task-row .btn{grid-column:auto}
+  .ti{padding:13px 12px;gap:12px}
+  .chk{width:24px;height:24px;font-size:13px}
+  .tt{font-size:15px;white-space:normal;word-break:break-word}
+
+  /* Timer card */
+  .ring-wrap-sm{width:140px;height:140px}
+  .td-sm{font-size:30px}
+  .timer-btns{gap:8px}
+  .timer-btns .btn{min-height:44px}
+  .nav-arr{width:40px;height:40px;font-size:20px}
+  .sel-row{grid-template-columns:1fr;gap:8px}
+  .time-row input{width:76px;font-size:22px}
+  .cycle-opts{grid-template-columns:1fr 1fr;gap:8px}
+
+  /* FS overlay */
+  .fs-ring-wrap{width:200px;height:200px}
+  .fs-timer-disp{font-size:56px}
+  .fs-btns .btn{min-height:48px;padding:13px 18px;font-size:14px;min-width:100px}
+  .fs-back{top:16px;left:12px;padding:10px 14px}
+  .fs-pip{top:16px;right:12px}
+  .fs-quote{font-size:14px;margin-bottom:20px;padding:0 16px}
+  .fs-yt-input{padding:0 12px}
+  .fs-yt-input input{font-size:16px}
+
+  /* History */
+  .hist-list{max-height:280px}
+  .hstats{gap:10px}
+
+  /* Chart */
+  canvas#trend-chart{max-height:180px}
+
+  /* Data buttons */
+  .data-btns{grid-template-columns:1fr 1fr}
+
+  /* Notebook modal */
+  .nb-box{padding:20px 16px;border-radius:16px}
+  .nb-io{gap:6px}
+
+  /* YT page */
+  .yt-layout{grid-template-columns:1fr}
+  .yt-timer-bar{padding:10px 14px;gap:8px}
+  .yt-tb-time{font-size:20px}
+  .video-card-footer{padding:12px 14px;gap:8px;flex-wrap:wrap}
+  .view-mode-btns{flex-wrap:wrap;gap:4px}
+  .vm-btn{min-height:36px;padding:6px 10px;font-size:12px}
+  .notes-io-btns .btn{min-height:38px}
+  .notes-card{padding:16px 14px}
+
+  /* Focus guard */
+  .fg-title{font-size:20px}
+  .fg-countdown{font-size:52px}
+  .fg-quote{font-size:15px;padding:0 16px}
+
+  /* Break overlay */
+  .bo-time{font-size:64px}
+  .bo-sub{font-size:13px}
+}
+
+/* Very small phones */
+@media (max-width:380px){
+  .stats-grid{grid-template-columns:1fr}
+  .stat-val{font-size:24px}
+  .app{padding:14px 10px 100px}
+  .task-row{grid-template-columns:1fr}
+  .task-row input[type=number],.task-row .btn{width:100%}
+  .fs-timer-disp{font-size:48px}
+  .fs-ring-wrap{width:170px;height:170px}
+  .topbar-right{flex-wrap:wrap}
+}
+
+/* Bottom navigation bar for mobile */
+#mobile-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:8500;
+  background:rgba(10,10,15,.95);
+  border-top:1px solid var(--glass-b);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  padding:8px 0 max(8px,env(safe-area-inset-bottom));
+  grid-template-columns:1fr 1fr 1fr 1fr;
+}
+@media(max-width:768px){ #mobile-nav{display:grid} }
+.mn-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;padding:6px 4px;border:none;background:none;color:var(--faint);
+  cursor:pointer;transition:color .2s;font-family:'DM Sans',sans-serif;
+  font-size:10px;font-weight:600;letter-spacing:.04em;min-height:52px;
+  -webkit-tap-highlight-color:transparent;
+}
+.mn-btn.active{color:var(--a)}
+.mn-btn svg,.mn-btn .mn-icon{font-size:20px;line-height:1;margin-bottom:1px}
+body.lm #mobile-nav{background:rgba(240,240,248,.95)}
+
+/* Safe area for notch phones */
+.app{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+@media(min-width:769px){.app{padding-bottom:40px}}
+
+/* Touch feedback */
+.btn:active{opacity:.8;transform:scale(.97)}
+.mn-btn:active{opacity:.7}
+.ti:active{background:rgba(255,255,255,.06)}
+.nav-arr:active{background:rgba(124,107,255,.2)}
+.chk:active{border-color:var(--a);transform:scale(1.15)}
+
+/* Smooth scroll */
+html{scroll-behavior:smooth}
+*{-webkit-tap-highlight-color:transparent}
+
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:3px}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
@@ -384,6 +549,22 @@ canvas#trend-chart{max-height:200px}
 <div id="floating-timer">
   <span class="ft-mode" id="ft-mode">FOCUS</span>
   <span class="ft-time" id="ft-time">25:00</span>
+</div>
+
+<!-- Mobile bottom navigation bar -->
+<div id="mobile-nav">
+  <button class="mn-btn active" id="mn-dashboard" onclick="mobileNav('dashboard')">
+    <span class="mn-icon">🏠</span>Dashboard
+  </button>
+  <button class="mn-btn" id="mn-timer" onclick="mobileNav('timer')">
+    <span class="mn-icon">⏱</span>Timer
+  </button>
+  <button class="mn-btn" id="mn-notes" onclick="mobileNav('notes')">
+    <span class="mn-icon">📓</span>Notes
+  </button>
+  <button class="mn-btn" id="mn-history" onclick="mobileNav('history')">
+    <span class="mn-icon">📊</span>History
+  </button>
 </div>
 
 <!-- ══ FOCUS GUARD ══ -->
@@ -1224,9 +1405,14 @@ function hideFloatingTimer(){
 function openFullscreen(){
   randomQuote();updateFsTheme();buildCycleDots();
   fsOverlay.classList.add('active');document.body.style.overflow='hidden';
+  document.getElementById('mobile-nav').style.display='none';
 }
 function closeFullscreen(){
   fsOverlay.classList.remove('active');document.body.style.overflow='';
+  // Restore mobile nav if on main page
+  if(document.getElementById('main-page').classList.contains('active')){
+    document.getElementById('mobile-nav').style.display='';
+  }
 }
 
 // ── Record focus tick ──
@@ -1697,8 +1883,36 @@ resetBtn.onclick=()=>{
 };
 
 // ══════════════════════════════════════════
-// INIT
+// MOBILE NAV
 // ══════════════════════════════════════════
+function mobileNav(tab){
+  // Only works on main page
+  if(!document.getElementById('main-page').classList.contains('active')) return;
+  // Update active button
+  ['dashboard','timer','notes','history'].forEach(t=>{
+    document.getElementById(`mn-${t}`).classList.toggle('active', t===tab);
+  });
+  // Scroll to relevant card
+  const cards=document.querySelectorAll('#main-page .card, #main-page .stats-grid');
+  const targets={
+    dashboard: document.querySelector('#main-page .stats-grid'),
+    timer:     document.querySelector('#main-page .card:nth-of-type(2)'),
+    notes:     document.querySelector('#main-page .card:nth-of-type(1)'),
+    history:   document.querySelector('#main-page .card:nth-of-type(4)'),
+  };
+  const el=targets[tab];
+  if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// Keep mobile nav in sync when page loads
+document.addEventListener('DOMContentLoaded',()=>{
+  // On YT page, hide mobile nav
+  const obs=new MutationObserver(()=>{
+    const onYt=document.getElementById('yt-page').classList.contains('active');
+    document.getElementById('mobile-nav').style.display=onYt?'none':'';
+  });
+  obs.observe(document.getElementById('yt-page'),{attributes:true,attributeFilter:['class']});
+});
 lastKnownDate=today();cleanOld();renderTasks();renderHistory();checkStreak();updateBackup();renderNotes();renderNotebook();updateVideoWatchUI();
 startMasterInterval();
 </script>
