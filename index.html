@@ -440,7 +440,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-behavior:smooth}
 /* ── MOBILE LAYOUT (≤768px) ── */
 @media(max-width:768px){
   /* App padding — leave room for mobile nav */
-  .app{padding:16px 12px calc(80px + env(safe-area-inset-bottom))}
+  .app{padding:16px 12px calc(24px + env(safe-area-inset-bottom))}
 
   /* Topbar */
   .topbar{margin-bottom:16px;gap:8px;flex-wrap:wrap}
@@ -567,7 +567,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-behavior:smooth}
 /* ── VERY SMALL PHONES (≤380px) ── */
 @media(max-width:380px){
   .stats-grid{grid-template-columns:1fr}
-  .app{padding:14px 10px calc(80px + env(safe-area-inset-bottom))}
+  .app{padding:14px 10px calc(24px + env(safe-area-inset-bottom))}
   .fs-btns .btn{font-size:13px;padding:11px 10px}
   .pdf-title{display:none}
   .pdf-ctrl-btn{width:42px;height:42px;font-size:17px}
@@ -575,29 +575,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-behavior:smooth}
   .qg-countdown{font-size:48px}
   .fg-countdown{font-size:46px}
 }
-
-/* ── BOTTOM NAV BAR ── */
-#mobile-nav{
-  display:none;
-  position:fixed;bottom:0;left:0;right:0;z-index:8500;
-  background:rgba(10,10,15,.96);
-  border-top:1px solid var(--glass-b);
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  padding:6px 0;
-  padding-bottom:max(6px,env(safe-area-inset-bottom));
-  grid-template-columns:1fr 1fr 1fr 1fr;
-}
-@media(max-width:768px){#mobile-nav{display:grid}}
-.mn-btn{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;padding:6px 4px;border:none;background:none;color:var(--faint);
-  cursor:pointer;transition:color .2s;font-family:'DM Sans',sans-serif;
-  font-size:10px;font-weight:600;letter-spacing:.04em;min-height:54px;
-  -webkit-tap-highlight-color:transparent;
-}
-.mn-btn.active{color:var(--a)}
-.mn-btn .mn-icon{font-size:22px;line-height:1;margin-bottom:2px;display:block}
-body.lm #mobile-nav{background:rgba(240,240,248,.96)}
 
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:4px;height:4px}
@@ -673,7 +650,7 @@ body.lm #mobile-nav{background:rgba(240,240,248,.96)}
 /* ── Current Task Banner ── */
 #current-task-banner{
   position:fixed;
-  bottom:max(90px, calc(80px + env(safe-area-inset-bottom)));
+  bottom:max(90px, calc(24px + env(safe-area-inset-bottom)));
   left:16px;
   z-index:8400;
   background:rgba(10,12,20,.88);
@@ -846,10 +823,11 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
   border-radius:24px 24px 0 0;
   padding:20px 20px calc(20px + env(safe-area-inset-bottom));
   max-height:80vh;overflow-y:auto;
-  transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1),visibility 0s .35s;
   box-shadow:0 -8px 40px rgba(0,0,0,.4);
+  visibility:hidden;
 }
-.dash-panel.open{transform:translateY(0)}
+.dash-panel.open{transform:translateY(0);visibility:visible;transition:transform .35s cubic-bezier(.4,0,.2,1),visibility 0s 0s}
 .dash-panel-header{
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:18px;
@@ -875,8 +853,9 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
     left:auto;right:0;top:0;bottom:0;max-height:100vh;
     width:min(480px,48vw);border-radius:0;border-left:1px solid var(--glass-b);
     border-top:none;transform:translateX(100%);
+    transition:transform .35s cubic-bezier(.4,0,.2,1),visibility 0s .35s;
   }
-  .dash-panel.open{transform:translateX(0)}
+  .dash-panel.open{transform:translateX(0);visibility:visible;transition:transform .35s cubic-bezier(.4,0,.2,1),visibility 0s 0s}
 }
 
 /* Task datetime row */
@@ -969,20 +948,7 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
 </div>
 
 <!-- Mobile bottom navigation bar -->
-<div id="mobile-nav">
-  <button class="mn-btn active" id="mn-dashboard" onclick="mobileNav('dashboard')">
-    <span class="mn-icon">🏠</span>Dashboard
-  </button>
-  <button class="mn-btn" id="mn-timer" onclick="mobileNav('timer')">
-    <span class="mn-icon">⏱</span>Timer
-  </button>
-  <button class="mn-btn" id="mn-notes" onclick="mobileNav('notes')">
-    <span class="mn-icon">📓</span>Notes
-  </button>
-  <button class="mn-btn" id="mn-history" onclick="mobileNav('history')">
-    <span class="mn-icon">📊</span>History
-  </button>
-</div>
+<!-- mobile-nav removed -->
 
 <!-- ══ QUIT GUARD — shown when trying to leave during focus ══ -->
 <div id="quit-guard">
@@ -1691,9 +1657,12 @@ function addTask(){
   const tv=parseInt(document.getElementById('new-task-time').value);
   const dueDate=document.getElementById('new-task-date')?.value||'';
   const dueTime=document.getElementById('new-task-due-time')?.value||'';
-  appData.tasks.unshift({id:Date.now(),text:txt,completed:false,timestamp:Date.now(),
-    allocatedTime:(!isNaN(tv)&&tv>0)?tv*60:0,spentTime:0,dueDate,dueTime});
+  const newTask={id:Date.now(),text:txt,completed:false,timestamp:Date.now(),
+    allocatedTime:(!isNaN(tv)&&tv>0)?tv*60:0,spentTime:0,dueDate,dueTime};
+  appData.tasks.unshift(newTask);
   saveData();renderTasks();
+  // Auto-inject into timeline if due today
+  injectTodoToTimeline(newTask);
   document.getElementById('new-task').value='';
   document.getElementById('new-task-time').value='';
   if(document.getElementById('new-task-date')) document.getElementById('new-task-date').value='';
@@ -2069,13 +2038,11 @@ function hideFloatingTimer(){
 function openFullscreen(){
   randomQuote();updateFsTheme();buildCycleDots();
   fsOverlay.classList.add('active');document.body.style.overflow='hidden';
-  document.getElementById('mobile-nav').style.display='none';
 }
 function closeFullscreen(){
   fsOverlay.classList.remove('active');document.body.style.overflow='';
   // Restore mobile nav if on main page
   if(document.getElementById('main-page').classList.contains('active')){
-    document.getElementById('mobile-nav').style.display='';
   }
 }
 
@@ -2575,7 +2542,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   const obs=new MutationObserver(()=>{
     const onYt=document.getElementById('yt-page').classList.contains('active');
     const onPdf=document.getElementById('pdf-page').classList.contains('active');
-    document.getElementById('mobile-nav').style.display=(onYt||onPdf)?'none':'';
   });
   obs.observe(document.getElementById('yt-page'),{attributes:true,attributeFilter:['class']});
   obs.observe(document.getElementById('pdf-page'),{attributes:true,attributeFilter:['class']});
@@ -2861,7 +2827,6 @@ function _doShowPage(name){
     document.getElementById('main-page').classList.add('active');
     // Reset view mode and nav when going back to main
     setViewMode('default');
-    document.getElementById('mobile-nav').style.display='';
   }
   syncThemeBtns();
   const onYt=name==='yt',onPdf=name==='pdf';
@@ -2879,18 +2844,18 @@ const TT_DEFAULT=[
   {id:'2',type:'task',time:'7:00',emoji:'📝',label:'Make short notes',sub:'Important points, diagrams',color:'tt-morning'},
   {id:'3',type:'task',time:'7:30',emoji:'🔁',label:'Revise previous day topics',sub:'Quick 30-min revision',color:'tt-morning'},
   {id:'s2',type:'sep',label:'🏫 Class Time'},
-  {id:'4',type:'task',time:'9:00',emoji:'🏫',label:'Attend class actively',sub:'9:00 – 12:30 PM\nBreak time: revise flashcards, solve 5–10 MCQs',color:'tt-class'},
+  {id:'4',type:'task',time:'9:00',emoji:'🏫',label:'Attend class actively',sub:'09:00 – 12:30\nBreak time: revise flashcards, solve 5–10 MCQs',color:'tt-class'},
   {id:'s3',type:'sep',label:'🍽️ Lunch & Rest'},
   {id:'5',type:'task',time:'12:30',emoji:'🍽️',label:'Lunch + rest',sub:'Optional short nap — recharge',color:'tt-rest'},
   {id:'s4',type:'sep',label:'📖 Afternoon Study'},
-  {id:'6',type:'task',time:'2:00',emoji:'📖',label:'Study Fisheries — second topic',sub:'Continue morning topic if needed',color:'tt-morning'},
-  {id:'7',type:'task',time:'3:00',emoji:'❓',label:'Solve 40–60 Fisheries MCQs',sub:'Timed practice session',color:'tt-morning'},
-  {id:'8',type:'task',time:'4:00',emoji:'🔍',label:'Analyze mistakes',sub:'Note weak areas for targeted revision',color:'tt-morning'},
+  {id:'6',type:'task',time:'14:00',emoji:'📖',label:'Study Fisheries — second topic',sub:'Continue morning topic if needed',color:'tt-morning'},
+  {id:'7',type:'task',time:'15:00',emoji:'❓',label:'Solve 40–60 Fisheries MCQs',sub:'Timed practice session',color:'tt-morning'},
+  {id:'8',type:'task',time:'16:00',emoji:'🔍',label:'Analyze mistakes',sub:'Note weak areas for targeted revision',color:'tt-morning'},
   {id:'s5',type:'sep',label:'🔁 Evening Revision'},
-  {id:'9',type:'task',time:'5:30',emoji:'🔁',label:'Revise old Fisheries topics',sub:'One hour full revision sweep',color:'tt-evening'},
-  {id:'10',type:'task',time:'6:30',emoji:'📌',label:'Memorize facts / short notes',sub:'30-min focused memorization',color:'tt-evening'},
+  {id:'9',type:'task',time:'17:30',emoji:'🔁',label:'Revise old Fisheries topics',sub:'One hour full revision sweep',color:'tt-evening'},
+  {id:'10',type:'task',time:'18:30',emoji:'📌',label:'Memorize facts / short notes',sub:'30-min focused memorization',color:'tt-evening'},
   {id:'s6',type:'sep',label:'🌙 Night Session'},
-  {id:'11',type:'task',time:'8:30',emoji:'🌙',label:'Light study',sub:'Weak areas / quick revision of full day',color:'tt-night'},
+  {id:'11',type:'task',time:'20:30',emoji:'🌙',label:'Light study',sub:'Weak areas / quick revision of full day',color:'tt-night'},
   {id:'s7',type:'sep',label:'⚡ Backup (If Tired)'},
   {id:'12',type:'task',time:'',emoji:'⚡',label:'1 hr MCQs',sub:'Fallback if low energy',color:'tt-backup'},
   {id:'13',type:'task',time:'',emoji:'⚡',label:'1 hr Revision',sub:'Light but consistent',color:'tt-backup'},
@@ -2902,11 +2867,31 @@ let ttEditId=null; // null = adding new
 function ttLoad(){
   try{
     const s=localStorage.getItem('focusflowTT');
-    ttData=s?JSON.parse(s):JSON.parse(JSON.stringify(TT_DEFAULT));
+    const ver=localStorage.getItem('focusflowTTver');
+    // v3 = corrected 24h times for afternoon/evening tasks
+    if(!s||ver!=='3'){
+      ttData=JSON.parse(JSON.stringify(TT_DEFAULT));
+      localStorage.setItem('focusflowTTver','3');
+    }else{
+      ttData=JSON.parse(s);
+    }
   }catch(e){ttData=JSON.parse(JSON.stringify(TT_DEFAULT));}
   if(!ttData||!ttData.length) ttData=JSON.parse(JSON.stringify(TT_DEFAULT));
 }
-function ttSave(){try{localStorage.setItem('focusflowTT',JSON.stringify(ttData));}catch(e){}}
+function ttSave(){try{localStorage.setItem('focusflowTT',JSON.stringify(ttData));localStorage.setItem('focusflowTTver','3');}catch(e){}}
+
+// ── 12-hour time formatter ──
+function fmt12h(timeStr){
+  if(!timeStr||!timeStr.trim()) return '';
+  // Already has AM/PM
+  if(/AM|PM/i.test(timeStr)) return timeStr;
+  const [h,m]=(timeStr+':0').split(':').map(Number);
+  if(isNaN(h)) return timeStr;
+  const period=h<12?'AM':'PM';
+  const h12=h===0?12:h>12?h-12:h;
+  const mm=String(m).padStart(2,'0');
+  return `${h12}:${mm} ${period}`;
+}
 
 function ttRender(){
   const list=document.getElementById('tt-list');
@@ -2922,7 +2907,7 @@ function ttRender(){
     div.className='tt-block'+(item.done?' done':'');
     div.dataset.id=item.id;
     div.innerHTML=`
-      <div class="tt-time">${item.time||''}</div>
+      <div class="tt-time">${fmt12h(item.time)}</div>
       <div class="tt-dot ${item.color}"></div>
       <div class="tt-body">
         <div class="tt-item ${item.color}">
@@ -3068,28 +3053,45 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
 // CURRENT TASK BANNER
 // ══════════════════════════════════════════
 function parseTaskTime(timeStr){
-  // Parse "6:00", "9:00", "12:30" etc
   if(!timeStr||!timeStr.trim()) return null;
-  const clean=timeStr.trim().replace(/\s*(AM|PM)/i,'');
+  const clean=timeStr.trim();
+  // Explicit AM/PM
+  if(/AM/i.test(clean)){
+    const t=clean.replace(/\s*AM/i,'').trim();
+    const [h,m]=(t+':0').split(':').map(Number);
+    return (h===12?0:h)*60+m;
+  }
+  if(/PM/i.test(clean)){
+    const t=clean.replace(/\s*PM/i,'').trim();
+    const [h,m]=(t+':0').split(':').map(Number);
+    return (h===12?12:h+12)*60+m;
+  }
+  // No AM/PM — parse as-is (treat as 24h)
+  // Times like "6:00"→360, "9:00"→540, "12:30"→750, "8:30"→510
+  // The timetable starts at 6am and ends ~9:30pm — all fit in 0–1440
   const [h,m]=(clean+':0').split(':').map(Number);
-  const isPM=/PM/i.test(timeStr)&&h!==12;
-  const isAM=/AM/i.test(timeStr)&&h===12;
-  let hour=h;
-  if(isPM) hour+=12;
-  if(isAM) hour=0;
-  if(!/AM|PM/i.test(timeStr)&&h<7&&h>=0) hour=h+12; // assume PM for ambiguous afternoon hours
-  return hour*60+m;
+  if(isNaN(h)) return null;
+  return h*60+m;
+}
+
+// Build a sorted minute map from timetable for accurate current-task detection
+function getTTSortedTasks(){
+  const tasks=ttData.filter(x=>x.type==='task'&&x.time);
+  // Parse and sort by time ascending
+  const parsed=tasks.map(t=>({...t,_min:parseTaskTime(t.time)}))
+    .filter(t=>t._min!==null)
+    .sort((a,b)=>a._min-b._min);
+  return parsed;
 }
 
 function getCurrentTTTask(){
   const now=new Date();
   const nowMin=now.getHours()*60+now.getMinutes();
-  const tasks=ttData.filter(x=>x.type==='task'&&x.time);
+  const tasks=getTTSortedTasks();
   let current=null;
   for(let i=0;i<tasks.length;i++){
-    const start=parseTaskTime(tasks[i].time);
-    if(start===null) continue;
-    const end=i+1<tasks.length?parseTaskTime(tasks[i+1].time):null;
+    const start=tasks[i]._min;
+    const end=i+1<tasks.length?tasks[i+1]._min:null;
     if(start<=nowMin&&(end===null||nowMin<end)){
       current=tasks[i];break;
     }
@@ -3118,37 +3120,30 @@ setInterval(updateCurrentTaskBanner,60000);
 function ttAutoScroll(){
   const now=new Date();
   const nowMin=now.getHours()*60+now.getMinutes();
-  const tasks=ttData.filter(x=>x.type==='task'&&x.time);
-  let currentIdx=-1;
+  const tasks=getTTSortedTasks();
+  let currentTask=null;
   for(let i=0;i<tasks.length;i++){
-    const start=parseTaskTime(tasks[i].time);
-    if(start===null) continue;
-    const end=i+1<tasks.length?parseTaskTime(tasks[i+1].time):null;
-    if(start<=nowMin&&(end===null||nowMin<end)){currentIdx=i;break;}
+    const start=tasks[i]._min;
+    const end=i+1<tasks.length?tasks[i+1]._min:null;
+    if(start<=nowMin&&(end===null||nowMin<end)){currentTask=tasks[i];break;}
   }
-  // Remove all current-time highlights
+  // Remove all highlights
   document.querySelectorAll('.tt-block.current-time').forEach(b=>b.classList.remove('current-time'));
-  // Walker element
+  // Walker
   let walker=document.getElementById('tt-walker');
   if(!walker){
     walker=document.createElement('div');
-    walker.id='tt-walker';
-    walker.innerHTML='🚶';
-    walker.className='tt-walker';
-    document.getElementById('tt-list').style.position='relative';
+    walker.id='tt-walker';walker.innerHTML='🚶';walker.className='tt-walker';
     document.getElementById('tt-list').appendChild(walker);
   }
-  if(currentIdx>=0){
-    const taskId=tasks[currentIdx].id;
-    const block=document.querySelector(`.tt-block[data-id="${taskId}"]`);
+  if(currentTask){
+    const block=document.querySelector(`.tt-block[data-id="${currentTask.id}"]`);
     if(block){
       block.classList.add('current-time');
-      // Position walker at the block
       const listEl=document.getElementById('tt-list');
       const blockTop=block.offsetTop;
-      walker.style.top=(blockTop+8)+'px';
+      walker.style.top=(blockTop+6)+'px';
       walker.style.display='block';
-      // Auto-scroll the scroll container to show current block
       const scroll=document.querySelector('.tt-scroll');
       if(scroll){
         const scrollTarget=blockTop-scroll.clientHeight/2+block.clientHeight/2;
@@ -3213,13 +3208,141 @@ function checkDueTasks(){
 setInterval(checkDueTasks,60000);
 
 // ══════════════════════════════════════════
+// TIMELINE SOUNDS & NOTIFICATIONS
+// ══════════════════════════════════════════
+let _ttNotifiedStart=new Set();
+let _ttNotifiedWarning=new Set();
+
+function playTTSound(type){
+  try{
+    const ac=new(window.AudioContext||window.webkitAudioContext)();
+    if(type==='start'){
+      // Bright ascending chime — task started!
+      [{f:523,t:0,d:.12},{f:659,t:.1,d:.12},{f:784,t:.2,d:.12},{f:1047,t:.3,d:.25}].forEach(({f,t,d})=>{
+        const o=ac.createOscillator(),g=ac.createGain();
+        o.connect(g);g.connect(ac.destination);
+        o.type='sine';o.frequency.value=f;
+        const s=ac.currentTime+t;
+        g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(.22,s+.01);
+        g.gain.exponentialRampToValueAtTime(.001,s+d);
+        o.start(s);o.stop(s+d+.05);
+      });
+    } else if(type==='warning'){
+      // Soft two-tone nudge — 5 min warning
+      [{f:440,t:0,d:.18},{f:550,t:.22,d:.18}].forEach(({f,t,d})=>{
+        const o=ac.createOscillator(),g=ac.createGain();
+        o.connect(g);g.connect(ac.destination);
+        o.type='triangle';o.frequency.value=f;
+        const s=ac.currentTime+t;
+        g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(.15,s+.02);
+        g.gain.exponentialRampToValueAtTime(.001,s+d);
+        o.start(s);o.stop(s+d+.05);
+      });
+    }
+  }catch(e){}
+}
+
+function showTTNotif(msg,icon){
+  // In-app toast
+  const n=document.createElement('div');
+  n.style.cssText='position:fixed;top:24px;left:50%;transform:translateX(-50%);background:rgba(10,12,22,.95);border:1px solid rgba(108,140,255,.4);color:#fff;padding:10px 20px;border-radius:50px;font-weight:600;font-size:13px;z-index:99999;backdrop-filter:blur(14px);display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap';
+  n.innerHTML=`<span style="font-size:18px">${icon}</span>${msg}`;
+  document.body.appendChild(n);
+  setTimeout(()=>{n.style.transition='opacity .4s';n.style.opacity='0';setTimeout(()=>n.remove(),400);},3500);
+  // Browser notification
+  if('Notification'in window&&Notification.permission==='granted'){
+    new Notification('FocusFlow',{body:msg,icon:'icon-192.png'});
+  }
+}
+
+function checkTTAlerts(){
+  const now=new Date();
+  const nowMin=now.getHours()*60+now.getMinutes();
+  const tasks=getTTSortedTasks();
+  tasks.forEach(task=>{
+    const startMin=task._min;
+    // 5-minute warning
+    if(startMin-nowMin===5&&!_ttNotifiedWarning.has(task.id)){
+      _ttNotifiedWarning.add(task.id);
+      playTTSound('warning');
+      showTTNotif(`Starting in 5 min: ${task.label}`,task.emoji||'⏰');
+    }
+    // Task start
+    if(startMin===nowMin&&!_ttNotifiedStart.has(task.id)){
+      _ttNotifiedStart.add(task.id);
+      playTTSound('start');
+      showTTNotif(`Now starting: ${task.label}`,task.emoji||'🔔');
+      ttAutoScroll();updateCurrentTaskBanner();
+    }
+  });
+  // Reset sets at midnight
+  if(nowMin===0&&now.getHours()===0){_ttNotifiedStart.clear();_ttNotifiedWarning.clear();}
+}
+
+// Check every minute
+setInterval(checkTTAlerts,60000);
+
+// ══════════════════════════════════════════
+// TODO → TIMELINE AUTO-INJECT
+// ══════════════════════════════════════════
+function injectTodoToTimeline(task){
+  // Only inject tasks due today and not completed
+  if(task.completed) return;
+  const todayStr=today();
+  if(task.dueDate&&task.dueDate!==todayStr) return;
+  const existId='todo_'+task.id;
+  if(ttData.find(x=>x.id===existId)) return; // already injected
+
+  let timeStr='';
+  if(task.dueTime){
+    // Convert HH:MM to 24h string we store
+    timeStr=task.dueTime; // already HH:MM from <input type="time">
+  }
+  // else no time — will go at beginning
+
+  const newBlock={
+    id:existId,type:'task',
+    time:timeStr,
+    emoji:'✅',
+    label:task.text||task.name||'To-Do Task',
+    sub:`From To-Do List${task.dueDate?' · '+task.dueDate:''}`,
+    color:'tt-morning',done:false,_fromTodo:true
+  };
+
+  if(!timeStr){
+    // No time → insert at the very beginning (before first task)
+    const firstTaskIdx=ttData.findIndex(x=>x.type==='task');
+    if(firstTaskIdx>0) ttData.splice(firstTaskIdx,0,newBlock);
+    else ttData.unshift(newBlock);
+  }else{
+    // Insert in correct chronological position
+    const newMin=parseTaskTime(timeStr);
+    let insertIdx=ttData.length;
+    for(let i=0;i<ttData.length;i++){
+      if(ttData[i].type!=='task'||!ttData[i].time) continue;
+      const m=parseTaskTime(ttData[i].time);
+      if(m!==null&&newMin<m){insertIdx=i;break;}
+    }
+    ttData.splice(insertIdx,0,newBlock);
+  }
+  ttSave();ttRender();ttAutoScroll();
+  showTTNotif(`Added "${newBlock.label}" to timeline`,'📅');
+}
+
+// ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
 lastKnownDate=today();cleanOld();renderTasks();renderHistory();checkStreak();updateBackup();renderNotes();renderNotebook();updateVideoWatchUI();
 startMasterInterval();
 // Timeline features
-setTimeout(()=>{ttAutoScroll();updateCurrentTaskBanner();checkDueTasks();},500);
-setInterval(()=>{ttAutoScroll();updateCurrentTaskBanner();},5*60*1000); // refresh every 5 min
+setTimeout(()=>{
+  ttAutoScroll();updateCurrentTaskBanner();
+  // Inject existing today's todo tasks into timeline on load
+  if(appData&&appData.tasks) appData.tasks.forEach(t=>{if(!t.completed) injectTodoToTimeline(t);});
+  // Request notification permission for task alerts
+  if('Notification'in window&&Notification.permission==='default') Notification.requestPermission();
+},600);
+setInterval(()=>{ttAutoScroll();updateCurrentTaskBanner();},5*60*1000);
 
 // Register PWA service worker
 if('serviceWorker' in navigator){
