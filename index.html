@@ -18,15 +18,22 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0a0a0f;--glass:rgba(255,255,255,0.04);--glass-b:rgba(255,255,255,0.08);
-  --text:#e8e8f0;--dim:#8888aa;--faint:#4a4a66;
-  --a:#7c6bff;--a2:#ff6b9d;--a3:#6bffb8;--a4:#ffb86b;
-  --red:#ff5757;--yellow:#ffd96b;
-  --r:20px;--rs:12px;--sh:0 8px 40px rgba(0,0,0,0.5);
+  --bg:#080c14;--glass:rgba(255,255,255,0.04);--glass-b:rgba(255,255,255,0.08);
+  --text:#eef0f8;--dim:#7a8aaa;--faint:#3a4460;
+  --a:#6c8cff;--a2:#ff7eb3;--a3:#4effc8;--a4:#ffc96c;
+  --red:#ff5c6a;--yellow:#ffe066;
+  --r:18px;--rs:11px;--sh:0 8px 40px rgba(0,0,0,0.55);
+  /* Timetable block colors */
+  --tt-morning:#6c8cff;    /* blue — study */
+  --tt-class:#4effc8;      /* teal — class */
+  --tt-break:#ffc96c;      /* amber — rest */
+  --tt-evening:#ff7eb3;    /* pink — revision */
+  --tt-night:#a78bfa;      /* purple — light study */
+  --tt-backup:#94a3b8;     /* grey — backup */
 }
 body.lm{
-  --bg:#f0f0f8;--glass:rgba(255,255,255,0.75);--glass-b:rgba(100,100,160,0.15);
-  --text:#1a1a2e;--dim:#5a5a7a;--faint:#aaaacc;--sh:0 8px 40px rgba(0,0,0,0.1);
+  --bg:#f0f4ff;--glass:rgba(255,255,255,0.8);--glass-b:rgba(100,120,200,0.14);
+  --text:#1a2040;--dim:#4a5880;--faint:#9aaace;--sh:0 8px 40px rgba(0,0,0,0.1);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -600,7 +607,117 @@ body.lm #mobile-nav{background:rgba(240,240,248,.96)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 #pip-canvas,#pip-video,#import-file,#import-notes-file{display:none}
 
-/* ══ PDF PAGE ══ */
+/* ══════════════════════════════════════════
+   TIMETABLE / TIMELINE
+══════════════════════════════════════════ */
+.tt-card{grid-column:1/-1;background:var(--glass);border:1px solid var(--glass-b);border-radius:var(--r);padding:22px 20px;box-shadow:var(--sh);backdrop-filter:blur(20px);animation:fadeUp .4s ease both}
+.tt-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.tt-title-row{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:flex;align-items:center;gap:8px}
+.tt-title-row::before{content:'';width:3px;height:12px;border-radius:2px;background:linear-gradient(to bottom,var(--a),var(--a2));flex-shrink:0}
+.tt-actions{display:flex;gap:6px;align-items:center}
+
+/* Scrollable list — fixed height like a to-do card */
+.tt-scroll{height:320px;overflow-y:auto;overflow-x:hidden;padding-right:4px;scroll-behavior:smooth}
+@media(max-width:768px){.tt-scroll{height:280px}}
+.tt-list{display:flex;flex-direction:column;position:relative;padding-bottom:8px}
+.tt-list::before{content:'';position:absolute;left:52px;top:18px;bottom:18px;width:2px;background:linear-gradient(to bottom,var(--a),var(--a2) 60%,var(--a3));opacity:.18;border-radius:2px}
+
+.tt-block{display:flex;align-items:flex-start;padding:4px 0;position:relative}
+.tt-block.separator{padding:14px 0 3px;cursor:default}
+.tt-block.done .tt-label{opacity:.4;text-decoration:line-through}
+.tt-block.done .tt-dot{background:currentColor!important}
+
+.tt-time{width:52px;flex-shrink:0;font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);line-height:1.4;text-align:right;padding-right:12px;padding-top:11px}
+.tt-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:13px;margin-right:14px;border:2px solid currentColor;background:var(--bg);transition:transform .2s,background .2s;position:relative;z-index:1}
+.tt-body{flex:1;min-width:0}
+.tt-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-left:3px solid currentColor;border-radius:11px;padding:9px 12px;transition:all .2s;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tt-item:hover{background:rgba(255,255,255,.05)}
+.tt-item-text{flex:1;min-width:0}
+.tt-emoji{font-size:15px;margin-right:5px;flex-shrink:0}
+.tt-label{font-size:13px;font-weight:600;color:var(--text);line-height:1.4}
+.tt-sub{font-size:11px;color:var(--dim);margin-top:3px;line-height:1.5;white-space:pre-line}
+
+/* Button area — tick always visible, edit/del only in edit mode */
+.tt-item-btns{display:flex;gap:2px;flex-shrink:0;align-items:center}
+/* Edit/delete always hidden unless card is in edit mode */
+.tt-act.edit-only{display:none}
+.tt-card.edit-mode .tt-act.edit-only{display:flex}
+
+.tt-act{background:none;border:none;cursor:pointer;padding:5px 7px;border-radius:7px;font-size:13px;transition:all .15s;color:var(--faint);line-height:1;display:flex;align-items:center;justify-content:center}
+.tt-act:hover,.tt-act:active{background:rgba(255,255,255,.08);color:var(--text)}
+.tt-act.del:hover,.tt-act.del:active{background:rgba(255,92,106,.15);color:var(--red)}
+/* Edit mode toggle button — active state */
+.tt-edit-toggle{transition:all .2s}
+.tt-card.edit-mode .tt-edit-toggle{background:rgba(108,140,255,.18)!important;color:var(--a)!important;border-color:rgba(108,140,255,.3)!important}
+
+.tt-sep{display:flex;align-items:center;gap:8px;padding-left:66px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.tt-sep::after{content:'';flex:1;height:1px;background:var(--glass-b)}
+
+.tt-morning{color:#6c8cff}.tt-class{color:#4effc8}.tt-rest{color:#ffc96c}
+.tt-evening{color:#ff7eb3}.tt-night{color:#a78bfa}.tt-backup{color:#94a3b8}
+
+#tt-modal{position:fixed;inset:0;z-index:9900;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(16px)}
+#tt-modal.show{display:flex;animation:fadeUp .25s ease}
+.tt-modal-box{background:var(--bg);border:1px solid var(--glass-b);border-radius:18px;padding:24px;width:min(420px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.6);position:relative}
+.tt-modal-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text);margin-bottom:18px}
+.tt-modal-row{display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap}
+.tt-modal-row label{font-size:11px;color:var(--faint);font-weight:600;letter-spacing:.06em;text-transform:uppercase;width:100%;margin-bottom:4px}
+.tt-modal-row input,.tt-modal-row select,.tt-modal-row textarea{font-size:15px!important;padding:10px 13px}
+.tt-modal-row textarea{min-height:72px;resize:vertical}
+.tt-modal-btns{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+.tt-modal-close{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--faint);font-size:18px;cursor:pointer;padding:4px;transition:color .2s}
+.tt-modal-close:hover{color:var(--text)}
+@media(max-width:480px){.tt-list::before{left:40px}.tt-time{width:40px;font-size:9px;padding-right:8px}.tt-sep{padding-left:52px}}
+
+
+/* ── Current Task Banner ── */
+#current-task-banner{
+  position:fixed;
+  bottom:max(90px, calc(80px + env(safe-area-inset-bottom)));
+  left:16px;
+  z-index:8400;
+  background:rgba(10,12,20,.88);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;
+  padding:9px 14px 9px 12px;
+  display:none;
+  align-items:center;
+  gap:10px;
+  max-width:220px;
+  box-shadow:0 4px 24px rgba(0,0,0,.45);
+  cursor:pointer;
+  transition:opacity .3s,transform .3s;
+  animation:fadeUp .4s ease;
+}
+#current-task-banner:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.18)}
+#current-task-banner.visible{display:flex}
+.ctb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;animation:ctbPulse 2s infinite}
+@keyframes ctbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.ctb-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ctb-label{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'DM Sans',sans-serif}
+.ctb-time{font-size:10px;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace;white-space:nowrap}
+/* On desktop — right side instead */
+@media(min-width:769px){
+  #current-task-banner{
+    bottom:auto;
+    top:50%;
+    left:auto;
+    right:0;
+    transform:translateY(-50%);
+    border-radius:14px 0 0 14px;
+    border-right:none;
+    max-width:200px;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:6px;
+    padding:12px 14px;
+  }
+  #current-task-banner:hover{transform:translateY(-50%) translateX(-3px)}
+  .ctb-label{font-size:13px;white-space:normal;line-height:1.3}
+  .ctb-time{font-size:11px}
+}
+/* Hide on PDF/YT page handled via JS */
 #pdf-page{position:fixed;inset:0;z-index:7000;background:var(--bg);display:none;flex-direction:column}
 #pdf-page.active{display:flex}
 #pdf-page::before{content:'';position:absolute;inset:0;background:
@@ -694,6 +811,128 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
   padding:8px 20px;border-radius:50px;font-size:13px;font-family:'DM Sans',sans-serif;
   pointer-events:none;display:none;z-index:7200;white-space:nowrap}
 #swipe-hint.show{display:block;animation:swipeHint 2s ease forwards}
+
+/* ── DASHBOARD NAV BUTTONS ── */
+.dash-nav-row{
+  grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  margin-bottom:0;
+}
+.dash-nav-btn{
+  background:var(--glass);border:1px solid var(--glass-b);border-radius:14px;
+  padding:14px 8px;cursor:pointer;transition:all .2s;display:flex;
+  flex-direction:column;align-items:center;gap:6px;
+  font-family:'DM Sans',sans-serif;color:var(--dim);
+  backdrop-filter:blur(16px);min-height:72px;
+}
+.dash-nav-btn:hover,.dash-nav-btn:active{
+  background:rgba(108,140,255,.12);border-color:rgba(108,140,255,.3);
+  color:var(--a);transform:translateY(-2px);
+}
+.dash-nav-icon{font-size:22px;line-height:1}
+.dash-nav-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+
+/* ── PANEL BACKDROP ── */
+#panel-backdrop{
+  position:fixed;inset:0;z-index:8800;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(8px);
+  display:none;opacity:0;transition:opacity .3s;
+}
+#panel-backdrop.show{display:block;opacity:1}
+
+/* ── SLIDE-UP PANELS ── */
+.dash-panel{
+  position:fixed;left:0;right:0;bottom:0;z-index:8900;
+  background:var(--bg);border-top:1px solid var(--glass-b);
+  border-radius:24px 24px 0 0;
+  padding:20px 20px calc(20px + env(safe-area-inset-bottom));
+  max-height:80vh;overflow-y:auto;
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 -8px 40px rgba(0,0,0,.4);
+}
+.dash-panel.open{transform:translateY(0)}
+.dash-panel-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;
+}
+.panel-close{
+  background:rgba(255,255,255,.06);border:1px solid var(--glass-b);
+  color:var(--dim);border-radius:50%;width:32px;height:32px;
+  cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0;
+}
+.panel-close:hover{background:rgba(255,92,106,.15);color:var(--red);border-color:rgba(255,92,106,.3)}
+.card-inner{} /* passthrough wrapper */
+
+/* Pull handle on panels */
+.dash-panel::before{
+  content:'';display:block;width:40px;height:4px;border-radius:2px;
+  background:rgba(255,255,255,.15);margin:0 auto 18px;
+}
+
+/* Desktop — panels become side drawers */
+@media(min-width:769px){
+  .dash-panel{
+    left:auto;right:0;top:0;bottom:0;max-height:100vh;
+    width:min(480px,48vw);border-radius:0;border-left:1px solid var(--glass-b);
+    border-top:none;transform:translateX(100%);
+  }
+  .dash-panel.open{transform:translateX(0)}
+}
+
+/* Task datetime row */
+.task-datetime-row{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.task-datetime-row input{width:auto;flex:1;min-width:120px;font-size:14px!important}
+
+/* ── CURRENT TASK BANNER ── */
+#current-task-banner{
+  position:fixed;right:16px;bottom:calc(72px + env(safe-area-inset-bottom));
+  z-index:8400;
+  background:rgba(10,12,22,.92);border:1px solid rgba(108,140,255,.3);
+  border-radius:16px;padding:10px 14px;
+  display:none;align-items:center;gap:10px;
+  backdrop-filter:blur(16px);box-shadow:0 4px 24px rgba(0,0,0,.4);
+  max-width:220px;animation:slideInR .4s ease;
+}
+@keyframes slideInR{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+#current-task-banner.show{display:flex}
+#ctb-icon{font-size:22px;flex-shrink:0}
+#ctb-text{flex:1;min-width:0}
+#ctb-label{font-size:12px;font-weight:700;color:var(--text);line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ctb-time{font-size:10px;color:var(--a);font-family:'DM Mono',monospace;margin-top:2px}
+#ctb-close{background:none;border:none;color:var(--faint);cursor:pointer;
+  font-size:12px;padding:2px;flex-shrink:0;line-height:1}
+@media(max-width:768px){
+  #current-task-banner{right:10px;max-width:190px;padding:8px 12px}
+}
+
+/* ── TIMELINE WALKER ANIMATION ── */
+.tt-walker{
+  position:absolute;left:46px;z-index:3;pointer-events:none;
+  transition:top .8s cubic-bezier(.4,0,.2,1);
+  font-size:18px;line-height:1;
+  filter:drop-shadow(0 0 6px rgba(108,140,255,.6));
+}
+@media(max-width:480px){.tt-walker{left:34px}}
+
+/* Current time highlight */
+.tt-block.current-time .tt-item{
+  background:rgba(108,140,255,.1)!important;
+  border-color:rgba(108,140,255,.4)!important;
+  box-shadow:0 0 0 1px rgba(108,140,255,.2);
+}
+.tt-block.current-time .tt-dot{
+  background:currentColor!important;
+  box-shadow:0 0 0 3px rgba(108,140,255,.25);
+  animation:dotPulse2 2s infinite;
+}
+@keyframes dotPulse2{0%,100%{box-shadow:0 0 0 3px rgba(108,140,255,.2)}50%{box-shadow:0 0 0 6px rgba(108,140,255,.05)}}
+
+/* Task due badge */
+.task-due{font-size:10px;color:var(--a4);font-family:'DM Mono',monospace;
+  margin-top:2px;display:flex;align-items:center;gap:4px}
+.task-due.overdue{color:var(--red)}
+.task-due.today{color:var(--a3)}
 </style>
 </head>
 <body>
@@ -716,6 +955,17 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
 <div id="floating-timer">
   <span class="ft-mode" id="ft-mode">FOCUS</span>
   <span class="ft-time" id="ft-time">25:00</span>
+</div>
+
+
+<!-- Current task banner -->
+<div id="current-task-banner">
+  <span id="ctb-icon">📖</span>
+  <div id="ctb-text">
+    <div id="ctb-label">No active task</div>
+    <div id="ctb-time"></div>
+  </div>
+  <button id="ctb-close" onclick="document.getElementById('current-task-banner').classList.remove('show')">✕</button>
 </div>
 
 <!-- Mobile bottom navigation bar -->
@@ -745,6 +995,33 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
   <div class="qg-btns">
     <button class="btn bp" id="qg-stay">✊ Stay Focused</button>
     <button class="btn br" id="qg-leave">Leave Anyway</button>
+  </div>
+</div>
+
+<!-- ══ TIMETABLE MODAL ══ -->
+<div id="tt-modal">
+  <div class="tt-modal-box">
+    <button class="tt-modal-close" id="tt-modal-close">✕</button>
+    <div class="tt-modal-title" id="tt-modal-title">Add Task</div>
+    <div class="tt-modal-row"><label>Time (e.g. 6:00 AM)</label><input type="text" id="tt-m-time" placeholder="6:00 AM" style="width:140px"></div>
+    <div class="tt-modal-row"><label>Emoji</label><input type="text" id="tt-m-emoji" placeholder="📖" style="width:70px;text-align:center"></div>
+    <div class="tt-modal-row"><label>Task / Label</label><input type="text" id="tt-m-label" placeholder="Study Fisheries topic"></div>
+    <div class="tt-modal-row"><label>Details (optional)</label><textarea id="tt-m-sub" placeholder="Short notes or sub-tasks..."></textarea></div>
+    <div class="tt-modal-row"><label>Color</label>
+      <select id="tt-m-color">
+        <option value="tt-morning">🔵 Morning / Study</option>
+        <option value="tt-class">🟢 Class</option>
+        <option value="tt-rest">🟡 Rest / Lunch</option>
+        <option value="tt-evening">🩷 Evening / Revision</option>
+        <option value="tt-night">🟣 Night / Light Study</option>
+        <option value="tt-backup">⚪ Backup / Optional</option>
+      </select>
+    </div>
+    <div class="tt-modal-row"><label>Section header (optional)</label><input type="text" id="tt-m-sep" placeholder="Leave blank for no header"></div>
+    <div class="tt-modal-btns">
+      <button class="btn bgr bsm" id="tt-modal-cancel">Cancel</button>
+      <button class="btn bp" id="tt-modal-save">Save</button>
+    </div>
   </div>
 </div>
 
@@ -851,17 +1128,65 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
   </div>
 
   <div class="main-grid">
-    <div class="card">
-      <div class="card-title">To-Do List</div>
+    <!-- TIMETABLE — full width -->
+    <div class="tt-card" id="tt-card">
+      <div class="tt-header">
+        <div class="tt-title-row">🗓️ Daily Timetable</div>
+        <div class="tt-actions">
+          <button class="btn bgr bsm tt-edit-toggle" id="tt-edit-toggle">✏️ Edit</button>
+          <button class="btn bgr bsm" id="tt-reset-btn" style="display:none">↺ Reset</button>
+          <button class="btn bp bsm" id="tt-add-btn" style="display:none">+ Add</button>
+        </div>
+      </div>
+      <div class="tt-scroll"><div class="tt-list" id="tt-list"></div></div>
+    </div>
+
+    <!-- QUICK NAV BUTTONS -->
+    <div class="dash-nav-row">
+      <button class="dash-nav-btn" onclick="openPanel('todo')">
+        <span class="dash-nav-icon">✅</span>
+        <span class="dash-nav-label">To-Do</span>
+      </button>
+      <button class="dash-nav-btn" onclick="openPanel('timer')">
+        <span class="dash-nav-icon">⏱</span>
+        <span class="dash-nav-label">Timer</span>
+      </button>
+      <button class="dash-nav-btn" onclick="openPanel('chart')">
+        <span class="dash-nav-icon">📈</span>
+        <span class="dash-nav-label">Trends</span>
+      </button>
+      <button class="dash-nav-btn" onclick="openPanel('history')">
+        <span class="dash-nav-icon">📋</span>
+        <span class="dash-nav-label">History</span>
+      </button>
+    </div>
+
+    <!-- PANEL BACKDROP -->
+    <div id="panel-backdrop" onclick="closePanel()"></div>
+
+    <!-- PANEL: TO-DO LIST -->
+    <div class="dash-panel" id="panel-todo">
+      <div class="dash-panel-header">
+        <div class="card-title" style="margin:0">✅ To-Do List</div>
+        <button class="panel-close" onclick="closePanel()">✕</button>
+      </div>
       <div class="task-row">
-        <input type="text" id="new-task" placeholder="What needs to be done?">
+        <input type="text" id="new-task" placeholder="Task name…">
         <input type="number" id="new-task-time" placeholder="min" min="1">
         <button id="add-btn" class="btn bp">+ Add</button>
+      </div>
+      <div class="task-datetime-row">
+        <input type="date" id="new-task-date" title="Due date (optional)">
+        <input type="time" id="new-task-due-time" title="Due time (optional)">
+        <span style="font-size:11px;color:var(--faint);align-self:center">Due date/time</span>
       </div>
       <ul class="task-list" id="task-list"><li class="empty">No tasks yet</li></ul>
     </div>
 
-    <div class="card">
+    <!-- PANEL: TIMER -->
+    <div class="dash-panel" id="panel-timer">
+      <div class="dash-panel-header"><div class="card-title" style="margin:0">⏱ Focus Timer</div><button class="panel-close" onclick="closePanel()">✕</button></div>
+      <div class="card-inner">
       <div class="timer-nav">
         <div class="nav-arr" id="prev-timer">&#8249;</div>
         <div class="timer-lbl" id="timer-title">Focus Timer</div>
@@ -914,19 +1239,26 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
           <button class="btn bt bsm" id="btn-pip">PiP</button>
         </div>
       </div>
-    </div>
+      </div><!-- end card-inner -->
+    </div><!-- end panel-timer -->
 
-    <div class="card">
+    <!-- PANEL: CHART -->
+    <div class="dash-panel" id="panel-chart">
+      <div class="dash-panel-header"><div class="card-title" style="margin:0">📈 7-Day Trend</div><button class="panel-close" onclick="closePanel()">✕</button></div>
+      <div class="card-inner">
       <div class="chart-nav">
         <div class="nav-arr" id="prev-graph">&#8249;</div>
         <div class="card-title" style="margin:0" id="graph-title">7-Day Trend</div>
         <div class="nav-arr" id="next-graph">&#8250;</div>
       </div>
       <canvas id="trend-chart"></canvas>
-    </div>
+      </div><!-- end card-inner -->
+    </div><!-- end panel-chart -->
 
-    <div class="card">
-      <div class="card-title">Activity History</div>
+    <!-- PANEL: HISTORY -->
+    <div class="dash-panel" id="panel-history">
+      <div class="dash-panel-header"><div class="card-title" style="margin:0">📋 Activity History</div><button class="panel-close" onclick="closePanel()">✕</button></div>
+      <div class="card-inner">
       <div class="hist-list" id="history-container"><div class="empty">No history yet</div></div>
       <div class="data-btns">
         <button id="export-btn" class="btn bt">↑ Export</button>
@@ -934,7 +1266,8 @@ body.lm .pdf-canvas-wrap{background:#e8e8e8}
       </div>
       <div id="backup-status" class="bkn"></div>
       <button class="reset-btn" id="full-reset-btn">Clear All Data Permanently</button>
-    </div>
+      </div><!-- end card-inner -->
+    </div><!-- end panel-history -->
   </div>
 </div>
 </div>
@@ -1314,12 +1647,28 @@ function updateDropdown(){
 function renderTasks(){
   const list=document.getElementById('task-list');list.innerHTML='';
   if(!appData.tasks.length){list.innerHTML='<li class="empty">No tasks yet.</li>';updateDropdown();return;}
+  const now=new Date();
+  const todayStr=today();
   appData.tasks.forEach(task=>{
     const li=document.createElement('li');li.className='ti'+(task.completed?' done':'');
     const chk=document.createElement('div');chk.className='chk';if(task.completed)chk.innerText='✓';
     chk.onclick=()=>{task.completed=!task.completed;saveData();renderTasks();};
     const body=document.createElement('div');body.className='tb';
     const txt=document.createElement('div');txt.className='tt';txt.innerText=task.text;body.appendChild(txt);
+    // Due date/time badge
+    if(task.dueDate||task.dueTime){
+      const dueEl=document.createElement('div');
+      const due=task.dueDate?new Date(task.dueDate+'T'+(task.dueTime||'23:59')):null;
+      let cls='task-due',label='';
+      if(due){
+        const diffMs=due-now;const diffMin=Math.round(diffMs/60000);
+        if(diffMs<0){cls='task-due overdue';label='⚠ Overdue';}
+        else if(diffMin<60){cls='task-due today';label=`⏰ in ${diffMin}m`;}
+        else if(task.dueDate===todayStr){cls='task-due today';label=`📅 today${task.dueTime?' '+task.dueTime:''}`;}
+        else{label=`📅 ${task.dueDate}${task.dueTime?' '+task.dueTime:''}`;}
+      }
+      dueEl.className=cls;dueEl.innerText=label;body.appendChild(dueEl);
+    }
     if(task.allocatedTime>0){
       const meta=document.createElement('div');meta.className='tm';meta.id=`tp-${task.id}`;
       meta.innerText=`${Math.floor(task.spentTime/60)}m / ${Math.floor(task.allocatedTime/60)}m`;body.appendChild(meta);
@@ -1340,8 +1689,15 @@ function renderTasks(){
 function addTask(){
   const txt=document.getElementById('new-task').value.trim();if(!txt)return;
   const tv=parseInt(document.getElementById('new-task-time').value);
-  appData.tasks.unshift({id:Date.now(),text:txt,completed:false,timestamp:Date.now(),allocatedTime:(!isNaN(tv)&&tv>0)?tv*60:0,spentTime:0});
-  saveData();renderTasks();document.getElementById('new-task').value='';document.getElementById('new-task-time').value='';
+  const dueDate=document.getElementById('new-task-date')?.value||'';
+  const dueTime=document.getElementById('new-task-due-time')?.value||'';
+  appData.tasks.unshift({id:Date.now(),text:txt,completed:false,timestamp:Date.now(),
+    allocatedTime:(!isNaN(tv)&&tv>0)?tv*60:0,spentTime:0,dueDate,dueTime});
+  saveData();renderTasks();
+  document.getElementById('new-task').value='';
+  document.getElementById('new-task-time').value='';
+  if(document.getElementById('new-task-date')) document.getElementById('new-task-date').value='';
+  if(document.getElementById('new-task-due-time')) document.getElementById('new-task-due-time').value='';
 }
 document.getElementById('add-btn').onclick=addTask;
 document.getElementById('new-task').onkeypress=e=>{if(e.key==='Enter')addTask();};
@@ -2513,11 +2869,357 @@ function _doShowPage(name){
   if(onYt&&timerRunning) updateYtTimerBar();
 }
 
+
+// ══════════════════════════════════════════
+// TIMETABLE
+// ══════════════════════════════════════════
+const TT_DEFAULT=[
+  {id:'s1',type:'sep',label:'🌅 Morning Study'},
+  {id:'1',type:'task',time:'6:00',emoji:'📖',label:'Study Fisheries topic',sub:'Core concept — first session of the day',color:'tt-morning'},
+  {id:'2',type:'task',time:'7:00',emoji:'📝',label:'Make short notes',sub:'Important points, diagrams',color:'tt-morning'},
+  {id:'3',type:'task',time:'7:30',emoji:'🔁',label:'Revise previous day topics',sub:'Quick 30-min revision',color:'tt-morning'},
+  {id:'s2',type:'sep',label:'🏫 Class Time'},
+  {id:'4',type:'task',time:'9:00',emoji:'🏫',label:'Attend class actively',sub:'9:00 – 12:30 PM\nBreak time: revise flashcards, solve 5–10 MCQs',color:'tt-class'},
+  {id:'s3',type:'sep',label:'🍽️ Lunch & Rest'},
+  {id:'5',type:'task',time:'12:30',emoji:'🍽️',label:'Lunch + rest',sub:'Optional short nap — recharge',color:'tt-rest'},
+  {id:'s4',type:'sep',label:'📖 Afternoon Study'},
+  {id:'6',type:'task',time:'2:00',emoji:'📖',label:'Study Fisheries — second topic',sub:'Continue morning topic if needed',color:'tt-morning'},
+  {id:'7',type:'task',time:'3:00',emoji:'❓',label:'Solve 40–60 Fisheries MCQs',sub:'Timed practice session',color:'tt-morning'},
+  {id:'8',type:'task',time:'4:00',emoji:'🔍',label:'Analyze mistakes',sub:'Note weak areas for targeted revision',color:'tt-morning'},
+  {id:'s5',type:'sep',label:'🔁 Evening Revision'},
+  {id:'9',type:'task',time:'5:30',emoji:'🔁',label:'Revise old Fisheries topics',sub:'One hour full revision sweep',color:'tt-evening'},
+  {id:'10',type:'task',time:'6:30',emoji:'📌',label:'Memorize facts / short notes',sub:'30-min focused memorization',color:'tt-evening'},
+  {id:'s6',type:'sep',label:'🌙 Night Session'},
+  {id:'11',type:'task',time:'8:30',emoji:'🌙',label:'Light study',sub:'Weak areas / quick revision of full day',color:'tt-night'},
+  {id:'s7',type:'sep',label:'⚡ Backup (If Tired)'},
+  {id:'12',type:'task',time:'',emoji:'⚡',label:'1 hr MCQs',sub:'Fallback if low energy',color:'tt-backup'},
+  {id:'13',type:'task',time:'',emoji:'⚡',label:'1 hr Revision',sub:'Light but consistent',color:'tt-backup'},
+];
+
+let ttData=[];
+let ttEditId=null; // null = adding new
+
+function ttLoad(){
+  try{
+    const s=localStorage.getItem('focusflowTT');
+    ttData=s?JSON.parse(s):JSON.parse(JSON.stringify(TT_DEFAULT));
+  }catch(e){ttData=JSON.parse(JSON.stringify(TT_DEFAULT));}
+  if(!ttData||!ttData.length) ttData=JSON.parse(JSON.stringify(TT_DEFAULT));
+}
+function ttSave(){try{localStorage.setItem('focusflowTT',JSON.stringify(ttData));}catch(e){}}
+
+function ttRender(){
+  const list=document.getElementById('tt-list');
+  list.innerHTML='';
+  ttData.forEach(item=>{
+    const div=document.createElement('div');
+    if(item.type==='sep'){
+      div.className='tt-block separator';
+      div.innerHTML=`<div class="tt-sep">${item.label}</div>`;
+      list.appendChild(div);
+      return;
+    }
+    div.className='tt-block'+(item.done?' done':'');
+    div.dataset.id=item.id;
+    div.innerHTML=`
+      <div class="tt-time">${item.time||''}</div>
+      <div class="tt-dot ${item.color}"></div>
+      <div class="tt-body">
+        <div class="tt-item ${item.color}">
+          <div class="tt-item-text">
+            <div class="tt-label"><span class="tt-emoji">${item.emoji||''}</span>${escHtml(item.label)}</div>
+            ${item.sub?`<div class="tt-sub">${escHtml(item.sub)}</div>`:''}
+          </div>
+          <div class="tt-item-btns">
+            <button class="tt-act" title="${item.done?'Undo':'Mark done'}" onclick="ttToggleDone('${item.id}',event)">${item.done?'↩':'✓'}</button>
+            <button class="tt-act edit-only" title="Edit" onclick="ttOpenEdit('${item.id}',event)">✏️</button>
+            <button class="tt-act del edit-only" title="Delete" onclick="ttDelete('${item.id}',event)">✕</button>
+          </div>
+        </div>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function ttToggleDone(id,e){
+  e&&e.stopPropagation();
+  const item=ttData.find(x=>x.id===id);
+  if(item){item.done=!item.done;ttSave();ttRender();}
+}
+function ttDelete(id,e){
+  e&&e.stopPropagation();
+  ttData=ttData.filter(x=>x.id!==id);
+  ttSave();ttRender();
+}
+function ttOpenEdit(id,e){
+  e&&e.stopPropagation();
+  ttEditId=id;
+  const item=ttData.find(x=>x.id===id);
+  if(!item)return;
+  document.getElementById('tt-modal-title').innerText='Edit Task';
+  document.getElementById('tt-m-time').value=item.time||'';
+  document.getElementById('tt-m-emoji').value=item.emoji||'';
+  document.getElementById('tt-m-label').value=item.label||'';
+  document.getElementById('tt-m-sub').value=item.sub||'';
+  document.getElementById('tt-m-color').value=item.color||'tt-morning';
+  document.getElementById('tt-m-sep').value='';
+  document.getElementById('tt-modal').classList.add('show');
+}
+function ttOpenAdd(){
+  ttEditId=null;
+  document.getElementById('tt-modal-title').innerText='Add Task';
+  document.getElementById('tt-m-time').value='';
+  document.getElementById('tt-m-emoji').value='📖';
+  document.getElementById('tt-m-label').value='';
+  document.getElementById('tt-m-sub').value='';
+  document.getElementById('tt-m-color').value='tt-morning';
+  document.getElementById('tt-m-sep').value='';
+  document.getElementById('tt-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('tt-m-time').focus(),100);
+}
+function ttCloseMod(){document.getElementById('tt-modal').classList.remove('show');}
+
+function ttSaveModal(){
+  const time=document.getElementById('tt-m-time').value.trim();
+  const emoji=document.getElementById('tt-m-emoji').value.trim();
+  const label=document.getElementById('tt-m-label').value.trim();
+  const sub=document.getElementById('tt-m-sub').value.trim();
+  const color=document.getElementById('tt-m-color').value;
+  const sep=document.getElementById('tt-m-sep').value.trim();
+  if(!label){alert('Please enter a task label.');return;}
+  if(ttEditId){
+    const item=ttData.find(x=>x.id===ttEditId);
+    if(item) Object.assign(item,{time,emoji,label,sub,color});
+  }else{
+    if(sep) ttData.push({id:'sep_'+Date.now(),type:'sep',label:sep});
+    ttData.push({id:'tt_'+Date.now(),type:'task',time,emoji,label,sub,color,done:false});
+  }
+  ttSave();ttRender();ttCloseMod();
+}
+
+// ── Edit mode toggle ──
+let ttEditMode=false;
+function ttToggleEditMode(){
+  ttEditMode=!ttEditMode;
+  const card=document.getElementById('tt-card');
+  const btn=document.getElementById('tt-edit-toggle');
+  const resetBtn=document.getElementById('tt-reset-btn');
+  const addBtn=document.getElementById('tt-add-btn');
+  if(ttEditMode){
+    card.classList.add('edit-mode');
+    btn.innerHTML='✓ Done';
+    resetBtn.style.display='';
+    addBtn.style.display='';
+  }else{
+    card.classList.remove('edit-mode');
+    btn.innerHTML='✏️ Edit';
+    resetBtn.style.display='none';
+    addBtn.style.display='none';
+  }
+}
+
+// Wire buttons
+document.getElementById('tt-edit-toggle').onclick=ttToggleEditMode;
+document.getElementById('tt-add-btn').onclick=ttOpenAdd;
+document.getElementById('tt-modal-close').onclick=ttCloseMod;
+document.getElementById('tt-modal-cancel').onclick=ttCloseMod;
+document.getElementById('tt-modal-save').onclick=ttSaveModal;
+document.getElementById('tt-modal').addEventListener('click',e=>{if(e.target===document.getElementById('tt-modal'))ttCloseMod();});
+document.getElementById('tt-m-label').onkeydown=e=>{if(e.key==='Enter')ttSaveModal();};
+document.getElementById('tt-reset-btn').onclick=()=>{
+  if(confirm('Reset timetable to default? All edits will be lost.')){
+    ttData=JSON.parse(JSON.stringify(TT_DEFAULT));
+    ttSave();ttRender();
+  }
+};
+
+// Load and render on init
+ttLoad();ttRender();setTimeout(ttAutoScroll,300);
+
+
+// ══════════════════════════════════════════
+// DASHBOARD PANELS
+// ══════════════════════════════════════════
+let _activePanel=null;
+function openPanel(id){
+  closePanel();
+  const panel=document.getElementById('panel-'+id);
+  const bd=document.getElementById('panel-backdrop');
+  if(!panel)return;
+  bd.classList.add('show');
+  panel.classList.add('open');
+  _activePanel=id;
+  // Render chart when opening chart panel
+  if(id==='chart') setTimeout(renderChart,80);
+}
+function closePanel(){
+  if(_activePanel){
+    document.getElementById('panel-'+_activePanel)?.classList.remove('open');
+    _activePanel=null;
+  }
+  document.getElementById('panel-backdrop').classList.remove('show');
+}
+// ESC key closes panel
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
+
+// ══════════════════════════════════════════
+// CURRENT TASK BANNER
+// ══════════════════════════════════════════
+function parseTaskTime(timeStr){
+  // Parse "6:00", "9:00", "12:30" etc
+  if(!timeStr||!timeStr.trim()) return null;
+  const clean=timeStr.trim().replace(/\s*(AM|PM)/i,'');
+  const [h,m]=(clean+':0').split(':').map(Number);
+  const isPM=/PM/i.test(timeStr)&&h!==12;
+  const isAM=/AM/i.test(timeStr)&&h===12;
+  let hour=h;
+  if(isPM) hour+=12;
+  if(isAM) hour=0;
+  if(!/AM|PM/i.test(timeStr)&&h<7&&h>=0) hour=h+12; // assume PM for ambiguous afternoon hours
+  return hour*60+m;
+}
+
+function getCurrentTTTask(){
+  const now=new Date();
+  const nowMin=now.getHours()*60+now.getMinutes();
+  const tasks=ttData.filter(x=>x.type==='task'&&x.time);
+  let current=null;
+  for(let i=0;i<tasks.length;i++){
+    const start=parseTaskTime(tasks[i].time);
+    if(start===null) continue;
+    const end=i+1<tasks.length?parseTaskTime(tasks[i+1].time):null;
+    if(start<=nowMin&&(end===null||nowMin<end)){
+      current=tasks[i];break;
+    }
+  }
+  return current;
+}
+
+function updateCurrentTaskBanner(){
+  const banner=document.getElementById('current-task-banner');
+  const onMain=document.getElementById('main-page').classList.contains('active');
+  const task=getCurrentTTTask();
+  if(task&&onMain){
+    document.getElementById('ctb-icon').innerText=task.emoji||'📖';
+    document.getElementById('ctb-label').innerText=task.label;
+    document.getElementById('ctb-time').innerText=task.time||'';
+    banner.classList.add('show');
+  }else{
+    banner.classList.remove('show');
+  }
+}
+setInterval(updateCurrentTaskBanner,60000);
+
+// ══════════════════════════════════════════
+// TIMELINE AUTO-SCROLL + WALKER
+// ══════════════════════════════════════════
+function ttAutoScroll(){
+  const now=new Date();
+  const nowMin=now.getHours()*60+now.getMinutes();
+  const tasks=ttData.filter(x=>x.type==='task'&&x.time);
+  let currentIdx=-1;
+  for(let i=0;i<tasks.length;i++){
+    const start=parseTaskTime(tasks[i].time);
+    if(start===null) continue;
+    const end=i+1<tasks.length?parseTaskTime(tasks[i+1].time):null;
+    if(start<=nowMin&&(end===null||nowMin<end)){currentIdx=i;break;}
+  }
+  // Remove all current-time highlights
+  document.querySelectorAll('.tt-block.current-time').forEach(b=>b.classList.remove('current-time'));
+  // Walker element
+  let walker=document.getElementById('tt-walker');
+  if(!walker){
+    walker=document.createElement('div');
+    walker.id='tt-walker';
+    walker.innerHTML='🚶';
+    walker.className='tt-walker';
+    document.getElementById('tt-list').style.position='relative';
+    document.getElementById('tt-list').appendChild(walker);
+  }
+  if(currentIdx>=0){
+    const taskId=tasks[currentIdx].id;
+    const block=document.querySelector(`.tt-block[data-id="${taskId}"]`);
+    if(block){
+      block.classList.add('current-time');
+      // Position walker at the block
+      const listEl=document.getElementById('tt-list');
+      const blockTop=block.offsetTop;
+      walker.style.top=(blockTop+8)+'px';
+      walker.style.display='block';
+      // Auto-scroll the scroll container to show current block
+      const scroll=document.querySelector('.tt-scroll');
+      if(scroll){
+        const scrollTarget=blockTop-scroll.clientHeight/2+block.clientHeight/2;
+        scroll.scrollTo({top:Math.max(0,scrollTarget),behavior:'smooth'});
+      }
+    }
+  }else{
+    walker.style.display='none';
+  }
+}
+
+// ══════════════════════════════════════════
+// TASK DUE DATE/TIME
+// ══════════════════════════════════════════
+// Patch renderTasks to show due date and inject into timeline
+const _origRenderTasks=window.renderTasks;
+
+function renderTaskDue(task){
+  if(!task.dueDate&&!task.dueTime) return '';
+  const now=new Date();
+  const due=task.dueDate?new Date(task.dueDate+'T'+(task.dueTime||'23:59')):null;
+  let cls='task-due';
+  let label='';
+  if(due){
+    const diffMs=due-now;
+    const diffMin=Math.round(diffMs/60000);
+    if(diffMs<0){cls='task-due overdue';label='⚠ Overdue';}
+    else if(diffMin<60){cls='task-due today';label=`⏰ in ${diffMin}m`;}
+    else if(diffMin<1440){cls='task-due today';label=`📅 today ${task.dueTime||''}`;}
+    else{label=`📅 ${task.dueDate}${task.dueTime?' '+task.dueTime:''}`;}
+  }
+  return `<div class="${cls}">${label}</div>`;
+}
+
+function checkDueTasks(){
+  // Inject due tasks into timetable if their time matches now
+  if(!appData||!appData.tasks) return;
+  const now=new Date();
+  const nowMin=now.getHours()*60+now.getMinutes();
+  const todayStr=today();
+  appData.tasks.forEach(task=>{
+    if(task.completed||!task.dueDate||!task.dueTime) return;
+    if(task.dueDate!==todayStr) return;
+    const [h,m]=task.dueTime.split(':').map(Number);
+    const taskMin=h*60+m;
+    // Inject if within 5 min window and not already injected
+    if(Math.abs(taskMin-nowMin)<=5){
+      const existId='todo_'+task.id;
+      if(!ttData.find(x=>x.id===existId)){
+        ttData.push({
+          id:existId,type:'task',
+          time:task.dueTime,emoji:'✅',
+          label:task.text||task.name||'Task',
+          sub:'From To-Do List',color:'tt-morning',done:false,
+          _fromTodo:true
+        });
+        ttSave();ttRender();ttAutoScroll();
+      }
+    }
+  });
+}
+setInterval(checkDueTasks,60000);
+
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
 lastKnownDate=today();cleanOld();renderTasks();renderHistory();checkStreak();updateBackup();renderNotes();renderNotebook();updateVideoWatchUI();
 startMasterInterval();
+// Timeline features
+setTimeout(()=>{ttAutoScroll();updateCurrentTaskBanner();checkDueTasks();},500);
+setInterval(()=>{ttAutoScroll();updateCurrentTaskBanner();},5*60*1000); // refresh every 5 min
 
 // Register PWA service worker
 if('serviceWorker' in navigator){
