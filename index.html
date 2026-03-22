@@ -400,6 +400,82 @@ textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
 .timer-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .timer-btns .btn { flex: 1; min-width: 64px; }
 
+/* ── Live timer start button ── */
+#start-btn-wrap { position: relative; margin-top: 4px; }
+#start-btn { width: 100%; }
+
+/* The live status button shown when timer is running */
+#dash-live-btn {
+  display: none;
+  width: 100%;
+  margin-top: 4px;
+  padding: 0;
+  height: 52px;
+  background: rgba(108,140,255,.1);
+  border: 1.5px solid rgba(108,140,255,.3);
+  border-radius: 12px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+#dash-live-btn:hover { background: rgba(108,140,255,.18); border-color: rgba(108,140,255,.5); }
+#dash-live-btn:active { transform: scale(.98); }
+/* animated shimmer sweep when running */
+#dash-live-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(108,140,255,.08) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: dlbShimmer 2.4s ease-in-out infinite;
+}
+@keyframes dlbShimmer { 0%{transform:translateX(-100%)} 60%,100%{transform:translateX(100%)} }
+/* paused state */
+#dash-live-btn.paused {
+  background: rgba(255,92,106,.08);
+  border-color: rgba(255,92,106,.25);
+  animation: none;
+}
+#dash-live-btn.paused::before { display: none; }
+#dash-live-btn.break-mode {
+  background: rgba(78,255,200,.08);
+  border-color: rgba(78,255,200,.25);
+}
+
+.dlb-pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--a); flex-shrink: 0;
+  animation: dlbPulse 1.5s ease-in-out infinite;
+}
+.dlb-pulse.brk { background: var(--a3); }
+.dlb-pulse.psd { background: var(--red); animation: none; opacity: .7; }
+@keyframes dlbPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+.dlb-mode {
+  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 5px;
+  font-family: 'DM Sans', sans-serif;
+  background: rgba(108,140,255,.2); color: var(--a);
+}
+.dlb-mode.brk { background: rgba(78,255,200,.15); color: var(--a3); }
+.dlb-mode.psd { background: rgba(255,92,106,.15); color: var(--red); }
+
+.dlb-time {
+  font-family: 'DM Mono', monospace;
+  font-size: 22px; font-weight: 400; letter-spacing: -1px;
+  color: var(--tx); line-height: 1;
+}
+.dlb-expand {
+  font-size: 12px; color: var(--faint);
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-family: 'DM Sans', sans-serif; font-weight: 600;
+}
+
 /* ═══════════════════════════════
    FULLSCREEN TIMER OVERLAY
 ═══════════════════════════════ */
@@ -709,6 +785,43 @@ canvas#trend-chart { max-height: 200px; }
 }
 .dash-nav-icon { font-size: 22px; line-height: 1; }
 .dash-nav-label { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+/* Timer running state on the nav button */
+.dash-nav-btn.timer-live {
+  border-color: rgba(104,117,245,.5);
+  background: rgba(104,117,245,.08);
+  position: relative;
+}
+.dash-nav-btn.timer-live .dash-nav-icon { display: none; }
+.dash-nav-timer-disp {
+  display: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 20px; font-weight: 500; letter-spacing: -1px;
+  line-height: 1; color: var(--a-light);
+}
+.dash-nav-btn.timer-live .dash-nav-timer-disp { display: block; }
+.dash-nav-timer-mode {
+  display: none;
+  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 5px;
+  background: rgba(104,117,245,.2); color: var(--a-light);
+}
+.dash-nav-btn.timer-live .dash-nav-timer-mode { display: block; }
+.dash-nav-btn.timer-live .dash-nav-label { color: var(--a-light); opacity: .7; }
+/* Pulsing dot */
+.dash-nav-pulse {
+  display: none;
+  position: absolute; top: 8px; right: 10px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--a-light);
+  animation: navPulse 1.8s ease-in-out infinite;
+}
+.dash-nav-btn.timer-live .dash-nav-pulse { display: block; }
+.dash-nav-btn.timer-live.paused-live .dash-nav-pulse { background: var(--yellow); animation: none; opacity: .7; }
+.dash-nav-btn.timer-live.break-live .dash-nav-timer-mode { background: rgba(78,255,200,.15); color: var(--a3); }
+.dash-nav-btn.timer-live.break-live .dash-nav-timer-disp { color: var(--a3); }
+.dash-nav-btn.timer-live.break-live .dash-nav-pulse { background: var(--a3); }
+.dash-nav-btn.timer-live.break-live { border-color: rgba(78,255,200,.35); background: rgba(78,255,200,.06); }
+@keyframes navPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
 #panel-backdrop { position: fixed; inset: 0; z-index: 8800; background: rgba(0,0,8,.7); backdrop-filter: blur(10px); display: none; opacity: 0; transition: opacity .3s; }
 #panel-backdrop.show { display: block; opacity: 1; }
 .dash-panel {
@@ -1101,8 +1214,11 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: 
         <span class="dash-nav-icon">✅</span>
         <span class="dash-nav-label">To-Do</span>
       </button>
-      <button class="dash-nav-btn" onclick="openPanel('timer')">
+      <button class="dash-nav-btn" id="dash-timer-btn" onclick="openPanel('timer')">
+        <div class="dash-nav-pulse"></div>
         <span class="dash-nav-icon">⏱</span>
+        <span class="dash-nav-timer-disp" id="dash-timer-disp">25:00</span>
+        <span class="dash-nav-timer-mode" id="dash-timer-mode">FOCUS</span>
         <span class="dash-nav-label">Timer</span>
       </button>
       <button class="dash-nav-btn" onclick="openPanel('chart')">
@@ -1172,7 +1288,15 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: 
           <div><label>Cycles</label><input type="number" id="cycle-count" value="4" min="1" max="20"></div>
           <div><label>Long break</label><input type="number" id="long-break-min" value="15" min="1"></div>
         </div>
-        <button id="start-btn" class="btn bp bw" style="margin-top:4px">▶ Start Timer</button>
+        <div id="start-btn-wrap">
+          <button id="start-btn" class="btn bp bw" style="margin-top:4px">▶ Start Timer</button>
+          <button id="dash-live-btn" onclick="openFullscreen()">
+            <div class="dlb-pulse" id="dlb-pulse"></div>
+            <span class="dlb-mode" id="dlb-mode">FOCUS</span>
+            <span class="dlb-time" id="dlb-time">25:00</span>
+            <span class="dlb-expand">⤢ tap</span>
+          </button>
+        </div>
       </div>
       <div id="timer-running" style="display:none">
         <div class="ring-wrap-sm">
@@ -1953,6 +2077,28 @@ function updateDisplays(){
   document.getElementById('mini-disp').innerText=ts;
   if(isPaused){document.getElementById('fs-pause-info').innerText=`PAUSED  ${fmt(pauseSeconds)}`;document.getElementById('mini-pause').innerText='PAUSED';}
   updateRings();drawPip();
+  updateDashLiveBtn();
+}
+
+function updateDashLiveBtn(){
+  const btn=document.getElementById('dash-live-btn');
+  const timeEl=document.getElementById('dlb-time');
+  const modeEl=document.getElementById('dlb-mode');
+  const pulseEl=document.getElementById('dlb-pulse');
+  if(!timerRunning){
+    btn.style.display='none';
+    document.getElementById('start-btn').style.display='';
+    return;
+  }
+  btn.style.display='flex';
+  document.getElementById('start-btn').style.display='none';
+  timeEl.innerText=fmt(totalSeconds);
+  const isBreak=runningTimerMode==='break';
+  const modeLabel=isPaused?'PAUSED':isBreak?'BREAK':'FOCUS';
+  modeEl.innerText=modeLabel;
+  modeEl.className='dlb-mode'+(isPaused?' psd':isBreak?' brk':'');
+  pulseEl.className='dlb-pulse'+(isPaused?' psd':isBreak?' brk':'');
+  btn.className=isPaused?'paused':isBreak?'break-mode':'';
 }
 function updateRings(){
   const pct=currentInitialSecs>0?totalSeconds/currentInitialSecs:1;
@@ -2268,6 +2414,7 @@ function setPauseUI(paused){
   document.getElementById('yt-tb-resume-btn').style.display=paused?'inline-flex':'none';
   document.getElementById('fs-pause-info').style.display=paused?'block':'none';
   document.getElementById('mini-pause').style.display=paused?'block':'none';
+  updateDashLiveBtn();
 }
 
 // ── PAUSE / RESUME ──
@@ -2326,6 +2473,7 @@ function endAll(){
   document.getElementById('next-timer').style.visibility='visible';
   document.getElementById('yt-timer-bar').classList.add('hidden');
   hideFloatingTimer();
+  updateDashLiveBtn(); // hide live button, restore start button
   closeFullscreen();renderHistory();saveData();setMS('none');
   if(document.pictureInPictureElement)document.exitPictureInPicture();
   pipVideo.pause();
